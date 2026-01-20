@@ -21,8 +21,8 @@ def get_current_user(request: Request) -> str | None:
     return request.session.get("user")
 
 
-@router.get("/", response_class=HTMLResponse)
-async def index(request: Request, user: str | None = Depends(get_current_user)) -> HTMLResponse | RedirectResponse:
+@router.get("/", response_model=None)
+async def index(request: Request, user: str | None = Depends(get_current_user)) -> RedirectResponse:
     """Home page - redirect to login or dashboard."""
     if not user:
         return RedirectResponse(url="/login", status_code=302)
@@ -60,7 +60,7 @@ async def logout(request: Request) -> RedirectResponse:
     return RedirectResponse(url="/login", status_code=302)
 
 
-@router.get("/dashboard", response_class=HTMLResponse)
+@router.get("/dashboard", response_model=None)
 async def dashboard(request: Request, user: str | None = Depends(get_current_user)) -> HTMLResponse | RedirectResponse:
     """Dashboard page."""
     if not user:
