@@ -32,6 +32,51 @@ async def list_tags(
     return storage.list_tags()
 
 
+@router.post("/check-all", response_model=list[CheckResultRecord])
+async def check_all_monitors(
+    tag: str | None = Query(default=None, description="Only check monitors with this tag"),
+    _user: str = Depends(require_auth),
+    storage: Storage = Depends(get_storage),
+) -> list[CheckResultRecord]:
+    """Run checks for all monitors (optionally filtered by tag)."""
+    monitors = storage.list_monitors(tag=tag)
+    results: list[CheckResultRecord] = []
+
+    for monitor in monitors:
+        if not monitor.enabled:
+            continue
+
+        # Get checker and run check
+        checker_class = get_checker(monitor.checker)
+
+        if monitor.username and monitor.password:
+            try:
+                checker = checker_class(username=monitor.username, password=monitor.password)
+            except TypeError:
+                checker = checker_class()
+        else:
+            checker = checker_class()
+
+        result = checker.check(monitor.url, verbose=False)
+        now = datetime.now(timezone.utc)
+
+        record = CheckResultRecord(
+            id=str(uuid.uuid4()),
+            monitor_id=monitor.id,
+            status=result.status.value,
+            message=result.message,
+            elapsed_ms=result.elapsed_ms,
+            details=result.details,
+            checked_at=now,
+        )
+
+        storage.add_result(record)
+        storage.update_monitor_status(monitor.id, result.status.value, now)
+        results.append(record)
+
+    return results
+
+
 @router.post("", response_model=Monitor, status_code=status.HTTP_201_CREATED)
 async def create_monitor(
     data: MonitorCreate,
