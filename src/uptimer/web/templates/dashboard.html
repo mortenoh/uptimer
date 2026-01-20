@@ -84,23 +84,30 @@
                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Checker</label>
-                    <select id="monitor-checker"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="http">HTTP</option>
-                        <option value="dhis2">DHIS2</option>
-                    </select>
-                </div>
-                <div id="auth-fields" class="space-y-4 hidden">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                        <input type="text" id="monitor-username"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input type="password" id="monitor-password"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Checks (order matters)</label>
+                    <div class="space-y-3">
+                        <!-- HTTP Check -->
+                        <div class="border border-gray-200 rounded-md p-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="check-http" value="http" checked
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="ml-2 text-sm font-medium text-gray-700">HTTP</span>
+                            </label>
+                        </div>
+                        <!-- DHIS2 Check -->
+                        <div class="border border-gray-200 rounded-md p-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="check-dhis2" value="dhis2" onchange="updateAuthFieldsVisibility()"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="ml-2 text-sm font-medium text-gray-700">DHIS2</span>
+                            </label>
+                            <div id="dhis2-auth" class="mt-2 space-y-2 hidden">
+                                <input type="text" id="dhis2-username" placeholder="Username"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="password" id="dhis2-password" placeholder="Password"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -319,13 +326,28 @@ async function checkAllMonitors() {
     }
 }
 
+// Show/hide DHIS2 auth fields
+function updateAuthFieldsVisibility() {
+    const dhis2Checked = document.getElementById('check-dhis2').checked;
+    const dhis2Auth = document.getElementById('dhis2-auth');
+    if (dhis2Checked) {
+        dhis2Auth.classList.remove('hidden');
+    } else {
+        dhis2Auth.classList.add('hidden');
+    }
+}
+
 // Modal functions
 function openCreateModal() {
     document.getElementById('modal-title').textContent = 'Add Monitor';
     document.getElementById('monitor-form').reset();
     document.getElementById('monitor-id').value = '';
     document.getElementById('monitor-enabled').checked = true;
-    document.getElementById('auth-fields').classList.add('hidden');
+    document.getElementById('check-http').checked = true;
+    document.getElementById('check-dhis2').checked = false;
+    document.getElementById('dhis2-username').value = '';
+    document.getElementById('dhis2-password').value = '';
+    updateAuthFieldsVisibility();
     document.getElementById('monitor-modal').classList.remove('hidden');
     document.getElementById('monitor-modal').classList.add('flex');
 }
@@ -338,20 +360,22 @@ async function openEditModal(monitorId) {
     document.getElementById('monitor-id').value = monitor.id;
     document.getElementById('monitor-name').value = monitor.name;
     document.getElementById('monitor-url').value = monitor.url;
-    document.getElementById('monitor-checker').value = monitor.checker;
-    document.getElementById('monitor-username').value = monitor.username || '';
-    document.getElementById('monitor-password').value = '';
     document.getElementById('monitor-interval').value = monitor.interval;
     document.getElementById('monitor-schedule').value = monitor.schedule || '';
     document.getElementById('monitor-tags').value = monitor.tags.join(', ');
     document.getElementById('monitor-enabled').checked = monitor.enabled;
 
-    // Show auth fields for dhis2 checker
-    if (monitor.checker === 'dhis2') {
-        document.getElementById('auth-fields').classList.remove('hidden');
-    } else {
-        document.getElementById('auth-fields').classList.add('hidden');
-    }
+    // Set checks checkboxes from checks array (array of {type, username?, password?})
+    const checkTypes = monitor.checks.map(c => c.type);
+    document.getElementById('check-http').checked = checkTypes.includes('http');
+    document.getElementById('check-dhis2').checked = checkTypes.includes('dhis2');
+
+    // Set DHIS2 credentials if present
+    const dhis2Check = monitor.checks.find(c => c.type === 'dhis2');
+    document.getElementById('dhis2-username').value = dhis2Check?.username || '';
+    document.getElementById('dhis2-password').value = '';  // Don't prefill password
+
+    updateAuthFieldsVisibility();
 
     document.getElementById('monitor-modal').classList.remove('hidden');
     document.getElementById('monitor-modal').classList.add('flex');
@@ -395,10 +419,29 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
     const tagsInput = document.getElementById('monitor-tags').value;
     const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
 
+    // Collect selected checks in order with their configs
+    const checks = [];
+    if (document.getElementById('check-http').checked) {
+        checks.push({ type: 'http' });
+    }
+    if (document.getElementById('check-dhis2').checked) {
+        const dhis2Check = { type: 'dhis2' };
+        const username = document.getElementById('dhis2-username').value;
+        const password = document.getElementById('dhis2-password').value;
+        if (username) dhis2Check.username = username;
+        if (password) dhis2Check.password = password;
+        checks.push(dhis2Check);
+    }
+
+    if (checks.length === 0) {
+        alert('Please select at least one check type');
+        return;
+    }
+
     const data = {
         name: document.getElementById('monitor-name').value,
         url: document.getElementById('monitor-url').value,
-        checker: document.getElementById('monitor-checker').value,
+        checks: checks,
         interval: parseInt(document.getElementById('monitor-interval').value),
         tags: tags,
         enabled: document.getElementById('monitor-enabled').checked,
@@ -407,12 +450,6 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
     // Add schedule if provided
     const schedule = document.getElementById('monitor-schedule').value.trim();
     if (schedule) data.schedule = schedule;
-
-    // Add auth if provided
-    const username = document.getElementById('monitor-username').value;
-    const password = document.getElementById('monitor-password').value;
-    if (username) data.username = username;
-    if (password) data.password = password;
 
     try {
         const url = monitorId ? `/api/monitors/${monitorId}` : '/api/monitors';
@@ -435,15 +472,6 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
     } catch (error) {
         console.error('Save failed:', error);
         alert('Failed to save monitor');
-    }
-});
-
-// Checker type change - show/hide auth fields
-document.getElementById('monitor-checker').addEventListener('change', (e) => {
-    if (e.target.value === 'dhis2') {
-        document.getElementById('auth-fields').classList.remove('hidden');
-    } else {
-        document.getElementById('auth-fields').classList.add('hidden');
     }
 });
 

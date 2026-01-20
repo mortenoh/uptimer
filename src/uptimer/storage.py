@@ -19,7 +19,7 @@ class Storage:
         self,
         mongodb_uri: str = "mongodb://localhost:27017",
         mongodb_db: str = "uptimer",
-        results_retention: int = 1000,
+        results_retention: int = 10_000_000,
         client: MongoClient[dict[str, Any]] | None = None,
     ) -> None:
         """Initialize storage.
@@ -90,7 +90,8 @@ class Storage:
         """
         # Validate
         url = validate_url(data.url)
-        validate_checker(data.checker)
+        for check in data.checks:
+            validate_checker(check.type)
         validate_interval(data.interval)
 
         now = datetime.now(timezone.utc)
@@ -100,9 +101,7 @@ class Storage:
             "_id": monitor_id,
             "name": data.name,
             "url": url,
-            "checker": data.checker,
-            "username": data.username,
-            "password": data.password,
+            "checks": [c.model_dump(exclude_none=True) for c in data.checks],
             "interval": data.interval,
             "schedule": data.schedule,
             "enabled": data.enabled,
@@ -140,8 +139,13 @@ class Storage:
         # Validate updated fields
         if "url" in update_data:
             update_data["url"] = validate_url(update_data["url"])
-        if "checker" in update_data:
-            validate_checker(update_data["checker"])
+        if "checks" in update_data:
+            # Convert CheckConfig objects to dicts and validate
+            checks_list = []
+            for check in update_data["checks"]:
+                validate_checker(check["type"])
+                checks_list.append(check)
+            update_data["checks"] = checks_list
         if "interval" in update_data:
             validate_interval(update_data["interval"])
 

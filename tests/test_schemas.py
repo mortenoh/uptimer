@@ -5,7 +5,25 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
+from uptimer.schemas import CheckConfig, CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
+
+
+class TestCheckConfig:
+    """Tests for CheckConfig schema."""
+
+    def test_http_check(self) -> None:
+        """Test creating HTTP check config."""
+        check = CheckConfig(type="http")
+        assert check.type == "http"
+        assert check.username is None
+        assert check.password is None
+
+    def test_dhis2_check_with_credentials(self) -> None:
+        """Test creating DHIS2 check config with credentials."""
+        check = CheckConfig(type="dhis2", username="admin", password="district")
+        assert check.type == "dhis2"
+        assert check.username == "admin"
+        assert check.password == "district"
 
 
 class TestMonitorCreate:
@@ -16,28 +34,39 @@ class TestMonitorCreate:
         data = MonitorCreate(name="Test", url="https://example.com")
         assert data.name == "Test"
         assert data.url == "https://example.com"
-        assert data.checker == "http"
+        assert len(data.checks) == 1
+        assert data.checks[0].type == "http"
         assert data.interval == 30
         assert data.enabled is True
-        assert data.username is None
-        assert data.password is None
 
     def test_full_create(self) -> None:
         """Test creating monitor with all fields."""
         data = MonitorCreate(
             name="Test Monitor",
             url="https://api.example.com",
-            checker="dhis2",
-            username="admin",
-            password="secret",
+            checks=[CheckConfig(type="dhis2", username="admin", password="secret")],
             interval=120,
             enabled=False,
         )
         assert data.name == "Test Monitor"
-        assert data.checker == "dhis2"
-        assert data.username == "admin"
+        assert data.checks[0].type == "dhis2"
+        assert data.checks[0].username == "admin"
         assert data.interval == 120
         assert data.enabled is False
+
+    def test_multiple_checks(self) -> None:
+        """Test creating monitor with multiple checks."""
+        data = MonitorCreate(
+            name="Multi",
+            url="https://example.com",
+            checks=[
+                CheckConfig(type="http"),
+                CheckConfig(type="dhis2", username="admin", password="pass"),
+            ],
+        )
+        assert len(data.checks) == 2
+        assert data.checks[0].type == "http"
+        assert data.checks[1].type == "dhis2"
 
     def test_name_validation_empty(self) -> None:
         """Test empty name is rejected."""
@@ -73,6 +102,7 @@ class TestMonitorUpdate:
         data = MonitorUpdate()
         assert data.name is None
         assert data.url is None
+        assert data.checks is None
 
     def test_partial_update(self) -> None:
         """Test partial update."""
@@ -81,6 +111,13 @@ class TestMonitorUpdate:
         assert data.interval == 300
         assert data.url is None
         assert data.enabled is None
+
+    def test_update_checks(self) -> None:
+        """Test updating checks."""
+        data = MonitorUpdate(checks=[CheckConfig(type="dhis2", username="u", password="p")])
+        assert data.checks is not None
+        assert len(data.checks) == 1
+        assert data.checks[0].type == "dhis2"
 
     def test_name_validation_empty(self) -> None:
         """Test empty name in update is rejected."""
@@ -103,9 +140,7 @@ class TestMonitor:
             id="test-id",
             name="Test",
             url="https://example.com",
-            checker="http",
-            username=None,
-            password=None,
+            checks=[CheckConfig(type="http")],
             interval=60,
             enabled=True,
             created_at=now,
@@ -116,6 +151,7 @@ class TestMonitor:
         assert monitor.id == "test-id"
         assert monitor.name == "Test"
         assert monitor.created_at == now
+        assert monitor.checks[0].type == "http"
 
 
 class TestCheckResultRecord:

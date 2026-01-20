@@ -105,7 +105,8 @@ class TestCreateMonitor:
         data = response.json()
         assert data["name"] == "Test"
         assert data["url"] == "https://example.com"
-        assert data["checker"] == "http"
+        assert len(data["checks"]) == 1
+        assert data["checks"][0]["type"] == "http"
         assert data["interval"] == 30
         assert data["enabled"] is True
         assert "id" in data
@@ -118,9 +119,7 @@ class TestCreateMonitor:
             json={
                 "name": "Full Monitor",
                 "url": "https://api.example.com",
-                "checker": "http",
-                "username": "user",
-                "password": "pass",
+                "checks": [{"type": "dhis2", "username": "user", "password": "pass"}],
                 "interval": 120,
                 "enabled": False,
             },
@@ -128,6 +127,7 @@ class TestCreateMonitor:
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Full Monitor"
+        assert data["checks"][0]["type"] == "dhis2"
         assert data["interval"] == 120
         assert data["enabled"] is False
 
@@ -144,7 +144,7 @@ class TestCreateMonitor:
         """Test creating monitor with invalid checker."""
         response = auth_client.post(
             "/api/monitors",
-            json={"name": "Test", "url": "https://example.com", "checker": "invalid"},
+            json={"name": "Test", "url": "https://example.com", "checks": [{"type": "invalid"}]},
         )
         assert response.status_code == 422
         assert "Unknown checker" in response.json()["detail"]
@@ -235,7 +235,7 @@ class TestUpdateMonitor:
 
         response = auth_client.put(
             f"/api/monitors/{monitor_id}",
-            json={"checker": "invalid"},
+            json={"checks": [{"type": "invalid"}]},
         )
         assert response.status_code == 422
 
@@ -330,7 +330,7 @@ class TestRunCheck:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "up"
-        assert data["message"] == "200 OK"
+        assert "200 OK" in data["message"]  # Message now includes check type prefix
 
 
 class TestGetResults:

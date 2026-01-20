@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Storage (MongoDB)
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_db: str = "uptimer"
-    results_retention: int = 1000  # Max results per monitor
+    results_retention: int = 10_000_000  # Max results per monitor
 
     # Monitors (from YAML)
     monitors: list[MonitorConfig] = []

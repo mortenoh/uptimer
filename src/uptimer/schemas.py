@@ -7,14 +7,23 @@ from croniter import croniter
 from pydantic import BaseModel, Field, field_validator
 
 
+class CheckConfig(BaseModel):
+    """Configuration for a single check."""
+
+    type: str = Field(..., description="Checker type (http, dhis2, etc)")
+    username: str | None = Field(default=None, description="Auth username")
+    password: str | None = Field(default=None, description="Auth password")
+
+
 class MonitorCreate(BaseModel):
     """Model for creating a new monitor."""
 
     name: str = Field(..., min_length=1, max_length=100, description="Display name")
     url: str = Field(..., description="URL to check")
-    checker: str = Field(default="http", description="Checker type")
-    username: str | None = Field(default=None, description="Auth username (optional)")
-    password: str | None = Field(default=None, description="Auth password (optional)")
+    checks: list[CheckConfig] = Field(
+        default_factory=lambda: [CheckConfig(type="http")],
+        description="Checks to run in order",
+    )
     interval: int = Field(default=30, ge=10, description="Check interval in seconds")
     schedule: str | None = Field(default=None, description="Cron expression (e.g. '*/5 * * * *')")
     enabled: bool = Field(default=True, description="Whether monitor is active")
@@ -43,9 +52,7 @@ class MonitorUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     url: str | None = None
-    checker: str | None = None
-    username: str | None = None
-    password: str | None = None
+    checks: list[CheckConfig] | None = None
     interval: int | None = Field(default=None, ge=10)
     schedule: str | None = None
     enabled: bool | None = None
@@ -66,9 +73,7 @@ class Monitor(BaseModel):
     id: str
     name: str
     url: str
-    checker: str = "http"
-    username: str | None = None
-    password: str | None = None
+    checks: list[CheckConfig] = Field(default_factory=lambda: [CheckConfig(type="http")])
     interval: int = 30
     schedule: str | None = None
     enabled: bool = True

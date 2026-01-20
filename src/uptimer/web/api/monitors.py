@@ -46,32 +46,48 @@ async def check_all_monitors(
         if not monitor.enabled:
             continue
 
-        # Get checker and run check
-        checker_class = get_checker(monitor.checker)
+        # Run all checks in order, aggregate results
+        all_details: dict[str, object] = {}
+        total_elapsed_ms = 0.0
+        final_status = "up"
+        messages: list[str] = []
 
-        if monitor.username and monitor.password:
-            try:
-                checker = checker_class(username=monitor.username, password=monitor.password)
-            except TypeError:
+        for check in monitor.checks:
+            checker_class = get_checker(check.type)
+
+            if check.username and check.password:
+                try:
+                    checker = checker_class(username=check.username, password=check.password)
+                except TypeError:
+                    checker = checker_class()
+            else:
                 checker = checker_class()
-        else:
-            checker = checker_class()
 
-        result = checker.check(monitor.url, verbose=False)
+            result = checker.check(monitor.url, verbose=False)
+            total_elapsed_ms += result.elapsed_ms
+            messages.append(f"{check.type}: {result.message}")
+            all_details[check.type] = result.details
+
+            # Use worst status (down > degraded > up)
+            if result.status.value == "down":
+                final_status = "down"
+            elif result.status.value == "degraded" and final_status != "down":
+                final_status = "degraded"
+
         now = datetime.now(timezone.utc)
 
         record = CheckResultRecord(
             id=str(uuid.uuid4()),
             monitor_id=monitor.id,
-            status=result.status.value,
-            message=result.message,
-            elapsed_ms=result.elapsed_ms,
-            details=result.details,
+            status=final_status,
+            message="; ".join(messages),
+            elapsed_ms=total_elapsed_ms,
+            details=all_details,
             checked_at=now,
         )
 
         storage.add_result(record)
-        storage.update_monitor_status(monitor.id, result.status.value, now)
+        storage.update_monitor_status(monitor.id, final_status, now)
         results.append(record)
 
     return results
@@ -162,21 +178,34 @@ async def run_check(
             detail="Monitor not found",
         )
 
-    # Get checker and run check
-    checker_class = get_checker(monitor.checker)
+    # Run all checks in order, aggregate results
+    all_details: dict[str, object] = {}
+    total_elapsed_ms = 0.0
+    final_status = "up"
+    messages: list[str] = []
 
-    # Instantiate checker with credentials if available (for checkers like dhis2)
-    if monitor.username and monitor.password:
-        try:
-            # Some checkers accept credentials (e.g., dhis2)
-            checker = checker_class(username=monitor.username, password=monitor.password)  # type: ignore[call-arg]
-        except TypeError:
-            # Checker doesn't support credentials
+    for check in monitor.checks:
+        checker_class = get_checker(check.type)
+
+        # Instantiate checker with credentials if available (for checkers like dhis2)
+        if check.username and check.password:
+            try:
+                checker = checker_class(username=check.username, password=check.password)  # type: ignore[call-arg]
+            except TypeError:
+                checker = checker_class()
+        else:
             checker = checker_class()
-    else:
-        checker = checker_class()
 
-    result = checker.check(monitor.url, verbose=False)
+        result = checker.check(monitor.url, verbose=False)
+        total_elapsed_ms += result.elapsed_ms
+        messages.append(f"{check.type}: {result.message}")
+        all_details[check.type] = result.details
+
+        # Use worst status (down > degraded > up)
+        if result.status.value == "down":
+            final_status = "down"
+        elif result.status.value == "degraded" and final_status != "down":
+            final_status = "degraded"
 
     now = datetime.now(timezone.utc)
 
@@ -184,16 +213,16 @@ async def run_check(
     record = CheckResultRecord(
         id=str(uuid.uuid4()),
         monitor_id=monitor_id,
-        status=result.status.value,
-        message=result.message,
-        elapsed_ms=result.elapsed_ms,
-        details=result.details,
+        status=final_status,
+        message="; ".join(messages),
+        elapsed_ms=total_elapsed_ms,
+        details=all_details,
         checked_at=now,
     )
 
     # Save result and update monitor status
     storage.add_result(record)
-    storage.update_monitor_status(monitor_id, result.status.value, now)
+    storage.update_monitor_status(monitor_id, final_status, now)
 
     return record
 

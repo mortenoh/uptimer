@@ -8,7 +8,7 @@ import mongomock
 import pytest
 from pymongo import MongoClient
 
-from uptimer.schemas import CheckResultRecord, MonitorCreate, MonitorUpdate
+from uptimer.schemas import CheckConfig, CheckResultRecord, MonitorCreate, MonitorUpdate
 from uptimer.storage import Storage
 
 
@@ -51,7 +51,11 @@ class TestMonitorCRUD:
 
     def test_create_monitor_invalid_checker(self, storage: Storage) -> None:
         """Test creating monitor with invalid checker."""
-        data = MonitorCreate(name="Test", url="https://example.com", checker="invalid")
+        data = MonitorCreate(
+            name="Test",
+            url="https://example.com",
+            checks=[CheckConfig(type="invalid")],
+        )
         with pytest.raises(ValueError, match="Unknown checker"):
             storage.create_monitor(data)
 
@@ -121,7 +125,7 @@ class TestMonitorCRUD:
         data = MonitorCreate(name="Test", url="https://example.com")
         created = storage.create_monitor(data)
 
-        update = MonitorUpdate(checker="invalid")
+        update = MonitorUpdate(checks=[CheckConfig(type="invalid")])
         with pytest.raises(ValueError, match="Unknown checker"):
             storage.update_monitor(created.id, update)
 

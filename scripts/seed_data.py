@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from uptimer.checkers import get_checker
-from uptimer.schemas import CheckResultRecord, MonitorCreate
+from uptimer.schemas import CheckConfig, CheckResultRecord, MonitorCreate
 from uptimer.settings import get_settings
 from uptimer.storage import Storage
 
@@ -14,70 +14,70 @@ SEED_MONITORS = [
     MonitorCreate(
         name="Google",
         url="https://www.google.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["search", "google", "public"],
     ),
     MonitorCreate(
         name="GitHub",
         url="https://github.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["developer", "git", "public"],
     ),
     MonitorCreate(
         name="Cloudflare",
         url="https://www.cloudflare.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["infrastructure", "cdn", "public"],
     ),
     MonitorCreate(
         name="Amazon",
         url="https://www.amazon.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["ecommerce", "aws", "public"],
     ),
     MonitorCreate(
         name="Wikipedia",
         url="https://www.wikipedia.org",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["knowledge", "public"],
     ),
     MonitorCreate(
         name="Reddit",
         url="https://www.reddit.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["social", "public"],
     ),
     MonitorCreate(
         name="Stack Overflow",
         url="https://stackoverflow.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["developer", "public"],
     ),
     MonitorCreate(
         name="OpenAI",
         url="https://www.openai.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["ai", "public"],
     ),
     MonitorCreate(
         name="Anthropic",
         url="https://www.anthropic.com",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["ai", "public"],
     ),
     MonitorCreate(
         name="httpbin (test)",
         url="https://httpbin.org/get",
-        checker="http",
+        checks=[CheckConfig(type="http")],
         interval=30,
         tags=["test", "api", "public"],
     ),
@@ -85,55 +85,66 @@ SEED_MONITORS = [
     MonitorCreate(
         name="DHIS2 Demo",
         url="https://play.dhis2.org/demo",
-        checker="dhis2",
-        username="admin",
-        password="district",
+        checks=[CheckConfig(type="dhis2", username="admin", password="district")],
         interval=30,
         tags=["dhis2", "demo", "health"],
     ),
     MonitorCreate(
         name="DHIS2 Dev",
         url="https://play.dhis2.org/dev",
-        checker="dhis2",
-        username="admin",
-        password="district",
+        checks=[CheckConfig(type="dhis2", username="admin", password="district")],
         interval=30,
         tags=["dhis2", "dev", "health"],
     ),
 ]
 
 
-def run_check(storage: Storage, monitor_id: str, url: str, checker_name: str,
-              username: str | None = None, password: str | None = None) -> str:
-    """Run a check for a monitor and store the result."""
-    checker_class = get_checker(checker_name)
+def run_checks(storage: Storage, monitor_id: str, url: str, checks: list[CheckConfig]) -> str:
+    """Run all checks for a monitor and store the result."""
+    all_details: dict[str, object] = {}
+    total_elapsed_ms = 0.0
+    final_status = "up"
+    messages: list[str] = []
 
-    # Instantiate checker with credentials if needed
-    if username and password:
-        try:
-            checker = checker_class(username=username, password=password)
-        except TypeError:
+    for check in checks:
+        checker_class = get_checker(check.type)
+
+        # Instantiate checker with credentials if needed
+        if check.username and check.password:
+            try:
+                checker = checker_class(username=check.username, password=check.password)
+            except TypeError:
+                checker = checker_class()
+        else:
             checker = checker_class()
-    else:
-        checker = checker_class()
 
-    result = checker.check(url, verbose=False)
+        result = checker.check(url, verbose=False)
+        total_elapsed_ms += result.elapsed_ms
+        messages.append(f"{check.type}: {result.message}")
+        all_details[check.type] = result.details
+
+        # Use worst status (down > degraded > up)
+        if result.status.value == "down":
+            final_status = "down"
+        elif result.status.value == "degraded" and final_status != "down":
+            final_status = "degraded"
+
     now = datetime.now(timezone.utc)
 
     # Create and store result
     record = CheckResultRecord(
         id=str(uuid.uuid4()),
         monitor_id=monitor_id,
-        status=result.status.value,
-        message=result.message,
-        elapsed_ms=result.elapsed_ms,
-        details=result.details,
+        status=final_status,
+        message="; ".join(messages),
+        elapsed_ms=total_elapsed_ms,
+        details=all_details,
         checked_at=now,
     )
     storage.add_result(record)
-    storage.update_monitor_status(monitor_id, result.status.value, now)
+    storage.update_monitor_status(monitor_id, final_status, now)
 
-    return result.status.value
+    return final_status
 
 
 def main() -> None:
@@ -162,15 +173,13 @@ def main() -> None:
         tags_str = ", ".join(monitor.tags) if monitor.tags else "none"
         print(f"Created: {monitor.name} [{tags_str}]", end=" ... ")
 
-        # Run initial check
+        # Run initial checks
         try:
-            status = run_check(
+            status = run_checks(
                 storage,
                 monitor.id,
                 monitor.url,
-                monitor.checker,
-                monitor_data.username,
-                monitor_data.password,
+                monitor.checks,
             )
             print(f"[{status}]")
         except Exception as e:
