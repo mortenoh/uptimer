@@ -9,6 +9,17 @@ wheels/
 # Virtual environments
 .venv
 
+# Testing/Coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Type checkers
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
 # mkdocs
 /site
 
