@@ -39,7 +39,8 @@ nav:
       - Overview: checkers/index.md
       - HTTP Checker: checkers/http.md
       - Custom Checkers: checkers/custom.md
-  - API Reference: api-reference.md
+  - REST API: rest-api.md
+  - Python API: api-reference.md
 
 markdown_extensions:
   - admonition

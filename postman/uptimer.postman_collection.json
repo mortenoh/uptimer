@@ -1,0 +1,271 @@
+{
+  "info": {
+    "name": "Uptimer API",
+    "description": "API collection for Uptimer monitoring service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "admin"
+                },
+                {
+                  "key": "password",
+                  "value": "admin"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitors",
+      "item": [
+        {
+          "name": "List Monitors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            }
+          }
+        },
+        {
+          "name": "List Monitors by Tag",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors?tag=production",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"],
+              "query": [
+                {
+                  "key": "tag",
+                  "value": "production"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Monitor (HTTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example Service\",\n  \"url\": \"https://example.com\",\n  \"checks\": [{\"type\": \"http\"}],\n  \"interval\": 30,\n  \"enabled\": true,\n  \"tags\": [\"production\", \"api\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            }
+          }
+        },
+        {
+          "name": "Create Monitor (DHIS2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"DHIS2 Instance\",\n  \"url\": \"https://play.dhis2.org/demo\",\n  \"checks\": [{\"type\": \"dhis2\", \"username\": \"admin\", \"password\": \"district\"}],\n  \"interval\": 60,\n  \"enabled\": true,\n  \"tags\": [\"dhis2\", \"health\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            }
+          }
+        },
+        {
+          "name": "Get Monitor",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "monitor-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Monitor",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"interval\": 60,\n  \"enabled\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "monitor-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Monitor",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "monitor-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run Check",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id/check",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id", "check"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "monitor-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check All Monitors",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/check-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", "check-all"]
+            }
+          }
+        },
+        {
+          "name": "Check All by Tag",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/check-all?tag=production",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", "check-all"],
+              "query": [
+                {
+                  "key": "tag",
+                  "value": "production"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Results",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/:id/results?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", ":id", "results"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "monitor-uuid"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors/tags",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors", "tags"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
