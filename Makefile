@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-durations coverage clean docs docs-serve docs-build serve docker-build docker-run docker-push
+.PHONY: help install lint test test-performance coverage clean docs docs-serve docs-build serve docker-build docker-run docker-push
 
 # ==============================================================================
 # Variables
@@ -21,7 +21,7 @@ help:
 	@echo "  install        Install dependencies"
 	@echo "  lint           Run linter and type checker"
 	@echo "  test           Run tests"
-	@echo "  test-durations Show 20 slowest tests"
+	@echo "  test-performance Show 20 slowest tests"
 	@echo "  coverage       Run tests with coverage reporting"
 	@echo "  serve          Start web UI server"
 	@echo "  docker-build   Build Docker image"
@@ -48,9 +48,9 @@ test:
 	@echo ">>> Running tests"
 	@$(UV) run pytest -q
 
-test-durations:
+test-performance:
 	@echo ">>> Running tests and showing 20 slowest"
-	@$(UV) run pytest -q --durations=20
+	@$(UV) run pytest -v --durations=20
 
 coverage:
 	@echo ">>> Running tests with coverage"
