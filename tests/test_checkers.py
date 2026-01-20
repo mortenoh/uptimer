@@ -105,7 +105,7 @@ class TestDhis2Checker:
         """Test DHIS2 checker returns version info with valid credentials."""
         from uptimer.checkers.dhis2 import Dhis2Checker
 
-        checker = Dhis2Checker(username="admin", password="district", timeout=30.0)
+        checker = Dhis2Checker(username="admin", password="district", timeout=30.0)  # pyright: ignore[reportCallIssue]
         result = checker.check("https://play.dhis2.org/demo")
 
         assert result.status == Status.UP
@@ -119,7 +119,7 @@ class TestDhis2Checker:
         """Test DHIS2 checker fails with invalid credentials."""
         from uptimer.checkers.dhis2 import Dhis2Checker
 
-        checker = Dhis2Checker(username="invalid", password="invalid", timeout=30.0)
+        checker = Dhis2Checker(username="invalid", password="invalid", timeout=30.0)  # pyright: ignore[reportCallIssue]
         result = checker.check("https://play.dhis2.org/demo")
 
         assert result.status == Status.DOWN
@@ -130,7 +130,7 @@ class TestDhis2Checker:
         """Test DHIS2 checker resolves and captures the final base URL."""
         from uptimer.checkers.dhis2 import Dhis2Checker
 
-        checker = Dhis2Checker(username="admin", password="district", timeout=30.0)
+        checker = Dhis2Checker(username="admin", password="district", timeout=30.0)  # pyright: ignore[reportCallIssue]
         result = checker.check("https://play.dhis2.org/demo")
 
         assert result.status == Status.UP

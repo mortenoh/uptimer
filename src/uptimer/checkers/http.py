@@ -4,7 +4,7 @@ import time
 
 import httpx
 
-from uptimer.checkers.base import Checker, CheckResult, Status
+from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
 
 
 class HttpChecker(Checker):
@@ -12,6 +12,7 @@ class HttpChecker(Checker):
 
     name = "http"
     description = "HTTP check with redirect following"
+    is_network_checker = True
 
     # User-Agent to avoid being blocked by sites that reject bot traffic
     USER_AGENT = "Mozilla/5.0 (compatible; Uptimer/1.0; +https://github.com/mortenoh/uptimer)"
@@ -20,7 +21,7 @@ class HttpChecker(Checker):
         """Initialize with timeout."""
         self.timeout = timeout
 
-    def check(self, url: str, verbose: bool = False) -> CheckResult:
+    def check(self, url: str, verbose: bool = False, context: CheckContext | None = None) -> CheckResult:
         """Check URL via HTTP GET, following redirects."""
         # Add https:// if no protocol specified
         if not url.startswith(("http://", "https://")):
@@ -56,6 +57,13 @@ class HttpChecker(Checker):
                     details["redirects"] = [
                         {"status": r.status_code, "location": r.headers.get("location", "")} for r in response.history
                     ]
+
+                # Store response data in context for subsequent checks
+                if context is not None:
+                    context.response_body = response.text
+                    context.response_headers = dict(response.headers)
+                    context.status_code = response.status_code
+                    context.elapsed_ms = elapsed_ms
 
                 return CheckResult(
                     status=status,

@@ -14,6 +14,31 @@ class CheckConfig(BaseModel):
     username: str | None = Field(default=None, description="Auth username")
     password: str | None = Field(default=None, description="Auth password")
 
+    # Checker-specific options
+    # jq/jsonpath: expression to evaluate
+    expr: str | None = Field(default=None, description="Expression for jq/jsonpath/xpath")
+    # Store extracted value with this key
+    store_as: str | None = Field(default=None, description="Key to store extracted value")
+    # threshold: min/max bounds
+    min: float | None = Field(default=None, description="Minimum threshold value")
+    max: float | None = Field(default=None, description="Maximum threshold value")
+    # contains: text to search for
+    pattern: str | None = Field(default=None, description="Pattern/text to search for")
+    # contains: negate the check
+    negate: bool = Field(default=False, description="Negate the check result")
+    # age: max age in seconds
+    max_age: int | None = Field(default=None, description="Maximum age in seconds")
+    # ssl: warning days before expiry
+    warn_days: int = Field(default=30, description="Days before SSL expiry to warn")
+    # tcp: port to check
+    port: int | None = Field(default=None, description="Port number for TCP check")
+    # dns: expected IP address
+    expected_ip: str | None = Field(default=None, description="Expected IP for DNS check")
+    # json-schema: schema to validate against
+    schema_: dict[str, Any] | None = Field(default=None, alias="schema", description="JSON schema to validate")
+    # Reference to stored value
+    value: str | None = Field(default=None, description="Value reference (e.g., $elapsed_ms, $count)")
+
 
 class MonitorCreate(BaseModel):
     """Model for creating a new monitor."""

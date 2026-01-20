@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Seed MongoDB with sample monitor data for common websites."""
 
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -112,7 +113,7 @@ def run_checks(storage: Storage, monitor_id: str, url: str, checks: list[CheckCo
         # Instantiate checker with credentials if needed
         if check.username and check.password:
             try:
-                checker = checker_class(username=check.username, password=check.password)
+                checker = checker_class(username=check.username, password=check.password)  # type: ignore[call-arg]
             except TypeError:
                 checker = checker_class()
         else:
@@ -160,10 +161,14 @@ def main() -> None:
     existing = storage.list_monitors()
     existing_urls = {m.url for m in existing}
 
+    # Limit number of monitors with N env var
+    n = int(os.environ.get("N", 0))
+    monitors_to_seed = SEED_MONITORS[:n] if n > 0 else SEED_MONITORS
+
     created = 0
     skipped = 0
 
-    for monitor_data in SEED_MONITORS:
+    for monitor_data in monitors_to_seed:
         if monitor_data.url in existing_urls:
             print(f"Skipping {monitor_data.name} - already exists")
             skipped += 1

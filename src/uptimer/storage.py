@@ -141,7 +141,7 @@ class Storage:
             update_data["url"] = validate_url(update_data["url"])
         if "checks" in update_data:
             # Convert CheckConfig objects to dicts and validate
-            checks_list = []
+            checks_list: list[dict[str, Any]] = []
             for check in update_data["checks"]:
                 validate_checker(check["type"])
                 checks_list.append(check)

@@ -308,21 +308,27 @@ class TestTagOperations:
     def test_list_monitors_filter_by_tag(self, storage: Storage) -> None:
         """Test filtering monitors by tag."""
         # Create monitors with different tags
-        storage.create_monitor(MonitorCreate(
-            name="Prod API",
-            url="https://api.example.com",
-            tags=["production", "api"],
-        ))
-        storage.create_monitor(MonitorCreate(
-            name="Staging API",
-            url="https://staging.example.com",
-            tags=["staging", "api"],
-        ))
-        storage.create_monitor(MonitorCreate(
-            name="Prod Web",
-            url="https://www.example.com",
-            tags=["production", "web"],
-        ))
+        storage.create_monitor(
+            MonitorCreate(
+                name="Prod API",
+                url="https://api.example.com",
+                tags=["production", "api"],
+            )
+        )
+        storage.create_monitor(
+            MonitorCreate(
+                name="Staging API",
+                url="https://staging.example.com",
+                tags=["staging", "api"],
+            )
+        )
+        storage.create_monitor(
+            MonitorCreate(
+                name="Prod Web",
+                url="https://www.example.com",
+                tags=["production", "web"],
+            )
+        )
 
         # Filter by tag
         prod_monitors = storage.list_monitors(tag="production")
@@ -336,32 +342,40 @@ class TestTagOperations:
 
     def test_list_monitors_no_filter(self, storage: Storage) -> None:
         """Test listing all monitors without tag filter."""
-        storage.create_monitor(MonitorCreate(
-            name="Test 1",
-            url="https://example1.com",
-            tags=["tag1"],
-        ))
-        storage.create_monitor(MonitorCreate(
-            name="Test 2",
-            url="https://example2.com",
-            tags=["tag2"],
-        ))
+        storage.create_monitor(
+            MonitorCreate(
+                name="Test 1",
+                url="https://example1.com",
+                tags=["tag1"],
+            )
+        )
+        storage.create_monitor(
+            MonitorCreate(
+                name="Test 2",
+                url="https://example2.com",
+                tags=["tag2"],
+            )
+        )
 
         all_monitors = storage.list_monitors()
         assert len(all_monitors) == 2
 
     def test_list_tags(self, storage: Storage) -> None:
         """Test listing all unique tags."""
-        storage.create_monitor(MonitorCreate(
-            name="Test 1",
-            url="https://example1.com",
-            tags=["production", "api"],
-        ))
-        storage.create_monitor(MonitorCreate(
-            name="Test 2",
-            url="https://example2.com",
-            tags=["staging", "api"],
-        ))
+        storage.create_monitor(
+            MonitorCreate(
+                name="Test 1",
+                url="https://example1.com",
+                tags=["production", "api"],
+            )
+        )
+        storage.create_monitor(
+            MonitorCreate(
+                name="Test 2",
+                url="https://example2.com",
+                tags=["staging", "api"],
+            )
+        )
 
         tags = storage.list_tags()
         assert tags == ["api", "production", "staging"]

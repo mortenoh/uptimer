@@ -4,7 +4,7 @@ import time
 
 import httpx
 
-from uptimer.checkers.base import Checker, CheckResult, Status
+from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
 from uptimer.checkers.registry import register_checker
 
 
@@ -14,6 +14,7 @@ class Dhis2Checker(Checker):
 
     name = "dhis2"
     description = "DHIS2 instance check with authentication"
+    is_network_checker = True
 
     def __init__(
         self,
@@ -26,7 +27,7 @@ class Dhis2Checker(Checker):
         self.password = password
         self.timeout = timeout
 
-    def check(self, url: str, verbose: bool = False) -> CheckResult:
+    def check(self, url: str, verbose: bool = False, context: CheckContext | None = None) -> CheckResult:
         """Check DHIS2 instance health via /api/system/info."""
         # Add https:// if no protocol specified
         if not url.startswith(("http://", "https://")):
@@ -58,6 +59,13 @@ class Dhis2Checker(Checker):
                 details["status_code"] = response.status_code
                 details["base_url"] = base_url
                 details["api_url"] = api_url
+
+                # Store response data in context for subsequent checks
+                if context is not None:
+                    context.response_body = response.text
+                    context.response_headers = dict(response.headers)
+                    context.status_code = response.status_code
+                    context.elapsed_ms = elapsed_ms
 
                 if response.status_code == 401:
                     return CheckResult(

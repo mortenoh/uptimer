@@ -2,15 +2,118 @@
 
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from uptimer.checkers import get_checker
-from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
+from uptimer.checkers import CheckContext, get_checker
+from uptimer.schemas import CheckConfig, CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
 from uptimer.storage import Storage
 from uptimer.web.api.deps import get_storage, require_auth
 
 router = APIRouter(prefix="/api/monitors", tags=["monitors"])
+
+
+def _instantiate_checker(check: CheckConfig) -> Any:
+    """Instantiate a checker with the appropriate options from CheckConfig."""
+    checker_class = get_checker(check.type)
+
+    # Build kwargs from CheckConfig options
+    kwargs: dict[str, Any] = {}
+
+    # Auth options (for dhis2, etc.)
+    if check.username:
+        kwargs["username"] = check.username
+    if check.password:
+        kwargs["password"] = check.password
+
+    # Value extractor options
+    if check.expr:
+        kwargs["expr"] = check.expr
+    if check.store_as:
+        kwargs["store_as"] = check.store_as
+
+    # Threshold options
+    if check.min is not None:
+        kwargs["min_value"] = check.min
+    if check.max is not None:
+        kwargs["max_value"] = check.max
+    if check.value:
+        kwargs["value_ref"] = check.value
+
+    # Pattern/contains options
+    if check.pattern:
+        kwargs["pattern"] = check.pattern
+    if check.negate:
+        kwargs["negate"] = check.negate
+
+    # Age checker options
+    if check.max_age is not None:
+        kwargs["max_age"] = check.max_age
+
+    # SSL options
+    if check.warn_days:
+        kwargs["warn_days"] = check.warn_days
+
+    # TCP options
+    if check.port is not None:
+        kwargs["port"] = check.port
+
+    # DNS options
+    if check.expected_ip:
+        kwargs["expected_ip"] = check.expected_ip
+
+    # JSON schema options
+    if check.schema_:
+        kwargs["schema"] = check.schema_
+
+    # Try to instantiate with kwargs, fall back to no-args
+    try:
+        return checker_class(**kwargs)
+    except TypeError:
+        return checker_class()
+
+
+def _run_checks(url: str, checks: list[CheckConfig]) -> tuple[str, str, float, dict[str, object]]:
+    """Run all checks for a monitor and return aggregated results.
+
+    Args:
+        url: URL to check
+        checks: List of check configurations
+
+    Returns:
+        Tuple of (final_status, message, total_elapsed_ms, all_details)
+    """
+    # Create shared context for the check chain
+    context = CheckContext(url=url)
+
+    all_details: dict[str, object] = {}
+    total_elapsed_ms = 0.0
+    final_status = "up"
+    messages: list[str] = []
+
+    for i, check in enumerate(checks):
+        checker = _instantiate_checker(check)
+        result = checker.check(url, verbose=False, context=context)
+
+        total_elapsed_ms += result.elapsed_ms
+        messages.append(f"{check.type}: {result.message}")
+
+        # Store check details with index to handle multiple checks of same type
+        check_key = f"{check.type}" if checks.count(check) == 1 else f"{check.type}_{i}"
+        all_details[check_key] = result.details
+
+        # Use worst status (down > degraded > up)
+        if result.status.value == "down":
+            final_status = "down"
+        elif result.status.value == "degraded" and final_status != "down":
+            final_status = "degraded"
+
+    # Include extracted values in details
+    if context.values:
+        all_details["_values"] = context.values
+
+    return final_status, "; ".join(messages), total_elapsed_ms, all_details
 
 
 @router.get("", response_model=list[Monitor])
@@ -46,41 +149,14 @@ async def check_all_monitors(
         if not monitor.enabled:
             continue
 
-        # Run all checks in order, aggregate results
-        all_details: dict[str, object] = {}
-        total_elapsed_ms = 0.0
-        final_status = "up"
-        messages: list[str] = []
-
-        for check in monitor.checks:
-            checker_class = get_checker(check.type)
-
-            if check.username and check.password:
-                try:
-                    checker = checker_class(username=check.username, password=check.password)
-                except TypeError:
-                    checker = checker_class()
-            else:
-                checker = checker_class()
-
-            result = checker.check(monitor.url, verbose=False)
-            total_elapsed_ms += result.elapsed_ms
-            messages.append(f"{check.type}: {result.message}")
-            all_details[check.type] = result.details
-
-            # Use worst status (down > degraded > up)
-            if result.status.value == "down":
-                final_status = "down"
-            elif result.status.value == "degraded" and final_status != "down":
-                final_status = "degraded"
-
+        final_status, message, total_elapsed_ms, all_details = _run_checks(monitor.url, monitor.checks)
         now = datetime.now(timezone.utc)
 
         record = CheckResultRecord(
             id=str(uuid.uuid4()),
             monitor_id=monitor.id,
             status=final_status,
-            message="; ".join(messages),
+            message=message,
             elapsed_ms=total_elapsed_ms,
             details=all_details,
             checked_at=now,
@@ -178,35 +254,7 @@ async def run_check(
             detail="Monitor not found",
         )
 
-    # Run all checks in order, aggregate results
-    all_details: dict[str, object] = {}
-    total_elapsed_ms = 0.0
-    final_status = "up"
-    messages: list[str] = []
-
-    for check in monitor.checks:
-        checker_class = get_checker(check.type)
-
-        # Instantiate checker with credentials if available (for checkers like dhis2)
-        if check.username and check.password:
-            try:
-                checker = checker_class(username=check.username, password=check.password)  # type: ignore[call-arg]
-            except TypeError:
-                checker = checker_class()
-        else:
-            checker = checker_class()
-
-        result = checker.check(monitor.url, verbose=False)
-        total_elapsed_ms += result.elapsed_ms
-        messages.append(f"{check.type}: {result.message}")
-        all_details[check.type] = result.details
-
-        # Use worst status (down > degraded > up)
-        if result.status.value == "down":
-            final_status = "down"
-        elif result.status.value == "degraded" and final_status != "down":
-            final_status = "degraded"
-
+    final_status, message, total_elapsed_ms, all_details = _run_checks(monitor.url, monitor.checks)
     now = datetime.now(timezone.utc)
 
     # Create result record
@@ -214,7 +262,7 @@ async def run_check(
         id=str(uuid.uuid4()),
         monitor_id=monitor_id,
         status=final_status,
-        message="; ".join(messages),
+        message=message,
         elapsed_ms=total_elapsed_ms,
         details=all_details,
         checked_at=now,

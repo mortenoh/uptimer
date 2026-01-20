@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-local stop logs seed clean docs docs-serve docs-build
+.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-all run-local stop logs seed clean docs docs-serve docs-build frontend frontend-build frontend-install docker-build
 
 # ==============================================================================
 # Variables
@@ -7,6 +7,7 @@
 UV := $(shell command -v uv 2> /dev/null)
 VENV_DIR?=.venv
 PYTHON := $(VENV_DIR)/bin/python
+N?=0
 
 # ==============================================================================
 # Help
@@ -16,7 +17,7 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Development:"
-	@echo "  install          Install dependencies"
+	@echo "  install          Install Python dependencies"
 	@echo "  lint             Run linter and type checker"
 	@echo "  test             Run unit tests"
 	@echo "  test-integration Run integration tests (require network)"
@@ -25,12 +26,19 @@ help:
 	@echo "  coverage         Run tests with coverage reporting"
 	@echo ""
 	@echo "Running:"
-	@echo "  run              Clean start with docker compose + seed (foreground)"
-	@echo "  run-local        Start server locally (requires local MongoDB)"
-	@echo "  serve            Start dev server with reload"
+	@echo "  run              Start API + MongoDB with docker compose"
+	@echo "  run-all          Start everything (API + MongoDB + Frontend)"
+	@echo "  run-local        Start API server locally (requires local MongoDB)"
+	@echo "  serve            Start API dev server with reload"
+	@echo "  frontend         Start frontend dev server"
 	@echo "  stop             Stop docker compose services"
 	@echo "  logs             Follow docker compose logs"
 	@echo "  seed             Seed MongoDB with sample monitors"
+	@echo ""
+	@echo "Building:"
+	@echo "  docker-build     Build all Docker images"
+	@echo "  frontend-build   Build frontend for production"
+	@echo "  frontend-install Install frontend dependencies"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  docs             Serve documentation locally"
@@ -44,7 +52,7 @@ help:
 # ==============================================================================
 
 install:
-	@echo ">>> Installing dependencies"
+	@echo ">>> Installing Python dependencies"
 	@$(UV) sync
 
 lint:
@@ -82,25 +90,51 @@ coverage:
 # ==============================================================================
 
 run:
-	@echo ">>> Stopping and cleaning up containers"
+	@echo ">>> Rebuilding and starting MongoDB + API"
 	@docker compose down -v
-	@echo ">>> Building fresh images"
 	@docker compose build --no-cache
-	@echo ">>> Starting MongoDB"
-	@docker compose up -d mongo --remove-orphans
-	@echo ">>> Waiting for MongoDB to be ready..."
+	@docker compose up -d --remove-orphans mongo api
+	@echo ">>> Waiting for services..."
 	@sleep 3
-	@echo ">>> Seeding database"
-	@$(UV) run python scripts/seed_data.py
-	@echo ">>> Starting app (Ctrl+C to stop)"
-	@docker compose up uptimer
+	@$(MAKE) seed
+	@echo ">>> API: http://localhost:8000"
+	@docker compose logs -f mongo api
+
+run-all:
+	@echo ">>> Rebuilding and starting all services"
+	@docker compose down -v
+	@rm -rf clients/web/node_modules clients/web/.next
+	@docker compose build --no-cache
+	@docker compose up -d --remove-orphans
+	@echo ">>> Waiting for services..."
+	@sleep 3
+	@$(MAKE) seed
+	@echo ">>> API: http://localhost:8000 | Frontend: http://localhost:3000"
+	@docker compose logs -f
 
 run-local:
-	@echo ">>> Starting server locally (requires MongoDB at localhost:27017)"
+	@echo ">>> Starting API server locally (requires MongoDB at localhost:27017)"
 	@$(UV) run uptimer serve
 
 serve:
 	@$(UV) run uptimer serve --reload
+
+frontend:
+	@echo ">>> Cleaning and starting frontend dev server on http://localhost:3001"
+	@rm -rf clients/web/node_modules clients/web/.next
+	@cd clients/web && npm install
+	@cd clients/web && npm run dev -- -p 3001
+
+frontend-install:
+	@echo ">>> Clean installing frontend dependencies"
+	@rm -rf clients/web/node_modules clients/web/.next
+	@cd clients/web && npm install
+
+frontend-build:
+	@echo ">>> Clean building frontend for production"
+	@rm -rf clients/web/node_modules clients/web/.next
+	@cd clients/web && npm install
+	@cd clients/web && npm run build
 
 stop:
 	@echo ">>> Stopping services"
@@ -111,14 +145,22 @@ logs:
 
 seed:
 	@echo ">>> Seeding MongoDB with sample monitors"
-	@$(UV) run python scripts/seed_data.py
+	@N=$(N) $(UV) run python scripts/seed_data.py
+
+# ==============================================================================
+# Building
+# ==============================================================================
+
+docker-build:
+	@echo ">>> Building Docker images"
+	@docker compose build
 
 # ==============================================================================
 # Documentation
 # ==============================================================================
 
 docs-serve:
-	@echo ">>> Serving documentation at http://127.0.0.1:8000"
+	@echo ">>> Serving documentation at http://127.0.0.1:8001"
 	@$(UV) run --group docs mkdocs serve
 
 docs-build:
@@ -140,6 +182,8 @@ clean:
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".next" -exec rm -rf {} + 2>/dev/null || true
 	@rm -rf .coverage htmlcov coverage.xml
 	@rm -rf .pyright
 	@rm -rf dist build *.egg-info

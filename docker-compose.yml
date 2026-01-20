@@ -12,9 +12,9 @@ services:
       timeout: 5s
       retries: 5
 
-  uptimer:
+  api:
     build: .
-    container_name: uptimer-app
+    container_name: uptimer-api
     ports:
       - "8000:8000"
     environment:
@@ -25,6 +25,18 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./clients/web
+      dockerfile: Dockerfile
+    container_name: uptimer-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
 
 volumes:
   mongo_data:
