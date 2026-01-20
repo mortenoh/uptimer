@@ -5,6 +5,7 @@ from rich import print as rprint
 from rich.console import Console
 
 from uptimer import __version__
+from uptimer.logging import configure_logging
 
 app = typer.Typer(
     name="uptimer",
@@ -13,12 +14,23 @@ app = typer.Typer(
 )
 console = Console()
 
+# Global state for JSON output mode
+_json_output = False
+
 
 def version_callback(value: bool) -> None:
     """Print version and exit."""
     if value:
         rprint(f"uptimer [cyan]{__version__}[/cyan]")
         raise typer.Exit()
+
+
+def json_callback(value: bool) -> None:
+    """Enable JSON output mode."""
+    global _json_output  # noqa: PLW0603
+    _json_output = value
+    if value:
+        configure_logging(json_output=True)
 
 
 @app.callback()
@@ -29,6 +41,13 @@ def main(
         callback=version_callback,
         is_eager=True,
         help="Show version and exit.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        callback=json_callback,
+        is_eager=True,
+        help="Output as JSON.",
     ),
 ) -> None:
     """Uptimer - Service uptime monitoring CLI."""
@@ -43,42 +62,55 @@ def check(
 ) -> None:
     """Check if a URL is up."""
     from uptimer.checkers import Status, get_checker
+    from uptimer.logging import get_logger
 
     # Get checker and run
     checker_class = get_checker(checker)
     checker_instance = checker_class()
     result = checker_instance.check(url, verbose=verbose)
 
-    # Display status
-    status_colors = {
-        Status.UP: "green",
-        Status.DEGRADED: "yellow",
-        Status.DOWN: "red",
-    }
-    color = status_colors[result.status]
-    rprint(f"[{color}]{result.status.name}[/{color}] {result.url} ({result.message})")
+    if _json_output:
+        # JSON output via structlog
+        log = get_logger("uptimer.check")
+        log.info(
+            "check_complete",
+            status=result.status.value,
+            url=result.url,
+            message=result.message,
+            elapsed_ms=round(result.elapsed_ms, 2),
+            **result.details,
+        )
+    else:
+        # Rich console output
+        status_colors = {
+            Status.UP: "green",
+            Status.DEGRADED: "yellow",
+            Status.DOWN: "red",
+        }
+        color = status_colors[result.status]
+        rprint(f"[{color}]{result.status.name}[/{color}] {result.url} ({result.message})")
 
-    # Verbose output
-    if verbose:
-        details = result.details
+        # Verbose output
+        if verbose:
+            details = result.details
 
-        # Show redirect chain if any
-        if "redirects" in details:
-            rprint("  [dim]Redirects:[/dim]")
-            for r in details["redirects"]:
-                rprint(f"    [dim]{r['status']}[/dim] -> {r['location']}")
-            rprint(f"  [dim]Final URL:[/dim] {details.get('final_url', '')}")
+            # Show redirect chain if any
+            if "redirects" in details:
+                rprint("  [dim]Redirects:[/dim]")
+                for r in details["redirects"]:
+                    rprint(f"    [dim]{r['status']}[/dim] -> {r['location']}")
+                rprint(f"  [dim]Final URL:[/dim] {details.get('final_url', '')}")
 
-        if result.elapsed_ms:
-            rprint(f"  [dim]Time:[/dim] {result.elapsed_ms:.0f}ms")
-        if "http_version" in details:
-            rprint(f"  [dim]HTTP:[/dim] {details['http_version']}")
-        if "server" in details:
-            rprint(f"  [dim]Server:[/dim] {details['server']}")
-        if "content_type" in details:
-            rprint(f"  [dim]Content-Type:[/dim] {details['content_type']}")
-        if "error" in details:
-            rprint(f"  [dim]Error:[/dim] {details['error']}")
+            if result.elapsed_ms:
+                rprint(f"  [dim]Time:[/dim] {result.elapsed_ms:.0f}ms")
+            if "http_version" in details:
+                rprint(f"  [dim]HTTP:[/dim] {details['http_version']}")
+            if "server" in details:
+                rprint(f"  [dim]Server:[/dim] {details['server']}")
+            if "content_type" in details:
+                rprint(f"  [dim]Content-Type:[/dim] {details['content_type']}")
+            if "error" in details:
+                rprint(f"  [dim]Error:[/dim] {details['error']}")
 
     if result.status == Status.DOWN:
         raise typer.Exit(1)
@@ -92,6 +124,33 @@ def checkers() -> None:
     for name in list_checkers():
         checker_class = get_checker(name)
         rprint(f"  [cyan]{name}[/cyan] - {checker_class.description}")
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind to"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port to bind to"),
+    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload"),
+) -> None:
+    """Start the web UI server."""
+    import uvicorn
+
+    from uptimer.settings import get_settings
+
+    settings = get_settings()
+    actual_host = host or settings.host
+    actual_port = port or settings.port
+
+    rprint(f"Starting server at [cyan]http://{actual_host}:{actual_port}[/cyan]")
+    rprint(f"Login with [cyan]{settings.username}[/cyan] / [dim]****[/dim]")
+
+    uvicorn.run(
+        "uptimer.web:create_app",
+        host=actual_host,
+        port=actual_port,
+        reload=reload,
+        factory=True,
+    )
 
 
 @app.command()

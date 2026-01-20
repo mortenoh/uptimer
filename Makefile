@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-durations coverage clean
+.PHONY: help install lint test test-durations coverage clean docs docs-serve docs-build serve
 
 # ==============================================================================
 # Venv
@@ -21,6 +21,10 @@ help:
 	@echo "  test           Run tests"
 	@echo "  test-durations Show 20 slowest tests"
 	@echo "  coverage       Run tests with coverage reporting"
+	@echo "  serve          Start web UI server"
+	@echo "  docs-serve     Serve documentation locally"
+	@echo "  docs-build     Build documentation site"
+	@echo "  docs           Alias for docs-serve"
 	@echo "  clean          Clean up temporary files"
 
 install:
@@ -49,6 +53,19 @@ coverage:
 	@$(UV) run coverage report
 	@$(UV) run coverage xml
 
+serve:
+	@$(UV) run uptimer serve --reload
+
+docs-serve:
+	@echo ">>> Serving documentation at http://127.0.0.1:8000"
+	@$(UV) run --group docs mkdocs serve
+
+docs-build:
+	@echo ">>> Building documentation site"
+	@$(UV) run --group docs mkdocs build
+
+docs: docs-serve
+
 clean:
 	@echo ">>> Cleaning up"
 	@find . -type f -name "*.pyc" -delete
@@ -59,6 +76,7 @@ clean:
 	@rm -rf .coverage htmlcov coverage.xml
 	@rm -rf .pyright
 	@rm -rf dist build *.egg-info
+	@rm -rf site
 
 # ==============================================================================
 # Default

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Uptimer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">Uptimer</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">{{ user }}</span>
+                <a href="/logout" class="text-indigo-600 hover:text-indigo-800">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Service Monitors</h2>
+
+            <div class="text-gray-500 text-center py-8">
+                <p>No monitors configured yet.</p>
+                <p class="text-sm mt-2">Add URLs to monitor their uptime.</p>
+            </div>
+
+            <!-- Placeholder for future monitor list -->
+            <div class="mt-6">
+                <button
+                    class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onclick="alert('Coming soon!')"
+                >
+                    Add Monitor
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Check -->
+        <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Quick Check</h2>
+            <form id="quick-check-form" class="flex gap-4">
+                <input
+                    type="text"
+                    id="check-url"
+                    placeholder="Enter URL (e.g., google.com)"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <button
+                    type="submit"
+                    class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                    Check
+                </button>
+            </form>
+            <div id="check-result" class="mt-4 hidden">
+                <div id="result-content" class="p-4 rounded-md"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+document.getElementById('quick-check-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = document.getElementById('check-url').value;
+    const resultDiv = document.getElementById('check-result');
+    const resultContent = document.getElementById('result-content');
+
+    resultDiv.classList.remove('hidden');
+    resultContent.className = 'p-4 rounded-md bg-gray-100';
+    resultContent.innerHTML = 'Checking...';
+
+    try {
+        const response = await fetch(`/api/check?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+
+        if (data.status === 'up') {
+            resultContent.className = 'p-4 rounded-md bg-green-100 text-green-800';
+            resultContent.innerHTML = `<strong>UP</strong> - ${data.url} (${data.message}) - ${Math.round(data.elapsed_ms)}ms`;
+        } else if (data.status === 'degraded') {
+            resultContent.className = 'p-4 rounded-md bg-yellow-100 text-yellow-800';
+            resultContent.innerHTML = `<strong>DEGRADED</strong> - ${data.url} (${data.message})`;
+        } else {
+            resultContent.className = 'p-4 rounded-md bg-red-100 text-red-800';
+            resultContent.innerHTML = `<strong>DOWN</strong> - ${data.url} (${data.message})`;
+        }
+    } catch (error) {
+        resultContent.className = 'p-4 rounded-md bg-red-100 text-red-800';
+        resultContent.innerHTML = `Error: ${error.message}`;
+    }
+});
+</script>
+{% endblock %}
