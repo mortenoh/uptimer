@@ -13,6 +13,9 @@ class HttpChecker(Checker):
     name = "http"
     description = "HTTP check with redirect following"
 
+    # User-Agent to avoid being blocked by sites that reject bot traffic
+    USER_AGENT = "Mozilla/5.0 (compatible; Uptimer/1.0; +https://github.com/mortenoh/uptimer)"
+
     def __init__(self, timeout: float = 10.0) -> None:
         """Initialize with timeout."""
         self.timeout = timeout
@@ -27,7 +30,8 @@ class HttpChecker(Checker):
 
         try:
             start = time.perf_counter()
-            with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+            headers = {"User-Agent": self.USER_AGENT}
+            with httpx.Client(timeout=self.timeout, follow_redirects=True, headers=headers) as client:
                 response = client.get(url)
                 elapsed_ms = (time.perf_counter() - start) * 1000
 
