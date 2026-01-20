@@ -1,0 +1,22 @@
+# Uptimer Configuration
+# Copy to config.yaml and modify as needed
+
+# Authentication for web UI
+username: admin
+password: admin
+secret_key: change-me-in-production
+
+# Server settings
+host: 127.0.0.1
+port: 8000
+
+# Monitors to check
+monitors:
+  - url: https://google.com
+    checker: http
+
+  - url: https://play.dhis2.org/demo
+    checker: dhis2
+    username: admin
+    password: district
+    interval: 300  # 5 minutes

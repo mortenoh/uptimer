@@ -176,3 +176,24 @@ def serve(
 def version() -> None:
     """Show version information."""
     rprint(f"uptimer [cyan]{__version__}[/cyan]")
+
+
+@app.command()
+def init() -> None:
+    """Initialize configuration file."""
+    from pathlib import Path
+
+    config_file = Path("config.yaml")
+    example_file = Path("config.example.yaml")
+
+    if config_file.exists():
+        rprint("[yellow]config.yaml already exists[/yellow]")
+        return
+
+    if not example_file.exists():
+        rprint("[red]config.example.yaml not found[/red]")
+        raise typer.Exit(1)
+
+    config_file.write_text(example_file.read_text())
+    rprint("[green]Created config.yaml from config.example.yaml[/green]")
+    rprint("Edit config.yaml to customize your settings.")

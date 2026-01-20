@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-performance coverage clean docs docs-serve docs-build serve docker-build docker-run docker-push
+.PHONY: help install lint test test-performance coverage clean docs docs-serve docs-build serve run docker-build docker-run docker-push
 
 # ==============================================================================
 # Variables
@@ -23,7 +23,8 @@ help:
 	@echo "  test           Run tests"
 	@echo "  test-performance Show 20 slowest tests"
 	@echo "  coverage       Run tests with coverage reporting"
-	@echo "  serve          Start web UI server"
+	@echo "  serve          Start web UI server (with reload)"
+	@echo "  run            Initialize config and start server"
 	@echo "  docker-build   Build Docker image"
 	@echo "  docker-run     Run Docker container"
 	@echo "  docker-push    Push image to registry"
@@ -60,6 +61,10 @@ coverage:
 
 serve:
 	@$(UV) run uptimer serve --reload
+
+run:
+	@$(UV) run uptimer init 2>/dev/null || true
+	@$(UV) run uptimer serve
 
 docs-serve:
 	@echo ">>> Serving documentation at http://127.0.0.1:8000"

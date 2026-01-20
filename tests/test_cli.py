@@ -1,5 +1,8 @@
 """Tests for the CLI."""
 
+import os
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from uptimer.cli import app
@@ -87,3 +90,41 @@ def test_check_invalid_checker() -> None:
     assert result.exit_code == 1
     assert result.exception is not None
     assert "Unknown checker" in str(result.exception)
+
+
+def test_init_creates_config(tmp_path: Path) -> None:
+    """Test init command creates config.yaml from example."""
+    os.chdir(tmp_path)
+    example = tmp_path / "config.example.yaml"
+    example.write_text("username: admin\npassword: secret\n")
+
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 0
+    assert "Created config.yaml" in result.output
+
+    config = tmp_path / "config.yaml"
+    assert config.exists()
+    assert config.read_text() == "username: admin\npassword: secret\n"
+
+
+def test_init_already_exists(tmp_path: Path) -> None:
+    """Test init command when config.yaml already exists."""
+    os.chdir(tmp_path)
+    (tmp_path / "config.example.yaml").write_text("example content")
+    (tmp_path / "config.yaml").write_text("existing content")
+
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 0
+    assert "already exists" in result.output
+
+    # Should not overwrite existing config
+    assert (tmp_path / "config.yaml").read_text() == "existing content"
+
+
+def test_init_no_example(tmp_path: Path) -> None:
+    """Test init command when config.example.yaml is missing."""
+    os.chdir(tmp_path)
+
+    result = runner.invoke(app, ["init"])
+    assert result.exit_code == 1
+    assert "not found" in result.output
