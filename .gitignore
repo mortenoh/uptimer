@@ -25,3 +25,8 @@ htmlcov/
 
 # Environment
 .env
+config.yaml
+config.yml
+
+# Data
+data/

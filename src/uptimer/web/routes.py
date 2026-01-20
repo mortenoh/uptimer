@@ -1,7 +1,7 @@
 """Web routes for uptimer."""
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,7 +13,6 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
-api_router = APIRouter(prefix="/api")
 
 
 def get_current_user(request: Request) -> str | None:
@@ -72,27 +71,3 @@ async def dashboard(request: Request, user: str | None = Depends(get_current_use
     )
 
 
-# API routes
-@api_router.get("/check")
-async def api_check(url: str, request: Request, user: str | None = Depends(get_current_user)) -> dict[str, Any]:
-    """API endpoint to check a URL."""
-    if not user:
-        return {"error": "Unauthorized"}
-
-    from uptimer.checkers import get_checker
-
-    checker_class = get_checker("http")
-    checker = checker_class()
-    result = checker.check(url)
-
-    return {
-        "status": result.status.value,
-        "url": result.url,
-        "message": result.message,
-        "elapsed_ms": result.elapsed_ms,
-        **result.details,
-    }
-
-
-# Include API router
-router.include_router(api_router)

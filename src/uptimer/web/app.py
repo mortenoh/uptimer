@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from uptimer.settings import get_settings
+from uptimer.web.api import monitors_router
 from uptimer.web.routes import router
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -37,5 +38,6 @@ def create_app() -> FastAPI:
 
     # Include routes
     app.include_router(router)
+    app.include_router(monitors_router)
 
     return app
