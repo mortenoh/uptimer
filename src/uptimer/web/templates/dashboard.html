@@ -17,22 +17,30 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 py-8">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Service Monitors</h2>
-
-            <div class="text-gray-500 text-center py-8">
-                <p>No monitors configured yet.</p>
-                <p class="text-sm mt-2">Add URLs to monitor their uptime.</p>
-            </div>
-
-            <!-- Placeholder for future monitor list -->
-            <div class="mt-6">
-                <button
-                    class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    onclick="alert('Coming soon!')"
-                >
-                    Add Monitor
+        <!-- Controls Bar -->
+        <div class="flex flex-wrap gap-4 mb-6 items-center justify-between">
+            <div class="flex gap-4 items-center">
+                <!-- Tag Filter -->
+                <select id="tag-filter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">All tags</option>
+                </select>
+                <!-- Refresh Button -->
+                <button onclick="loadMonitors()" class="px-3 py-2 text-gray-600 hover:text-gray-800">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
                 </button>
+            </div>
+            <button onclick="openCreateModal()" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                Add Monitor
+            </button>
+        </div>
+
+        <!-- Monitors Grid -->
+        <div id="monitors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loading state -->
+            <div class="col-span-full text-center py-8 text-gray-500">
+                Loading monitors...
             </div>
         </div>
 
@@ -40,16 +48,9 @@
         <div class="bg-white rounded-lg shadow p-6 mt-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Quick Check</h2>
             <form id="quick-check-form" class="flex gap-4">
-                <input
-                    type="text"
-                    id="check-url"
-                    placeholder="Enter URL (e.g., google.com)"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                <button
-                    type="submit"
-                    class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
+                <input type="text" id="check-url" placeholder="Enter URL (e.g., google.com)"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
                     Check
                 </button>
             </form>
@@ -60,7 +61,359 @@
     </main>
 </div>
 
+<!-- Create/Edit Monitor Modal -->
+<div id="monitor-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+            <h3 id="modal-title" class="text-lg font-semibold text-gray-800 mb-4">Add Monitor</h3>
+            <form id="monitor-form" class="space-y-4">
+                <input type="hidden" id="monitor-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" id="monitor-name" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                    <input type="text" id="monitor-url" required placeholder="https://example.com"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Checker</label>
+                    <select id="monitor-checker"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="http">HTTP</option>
+                        <option value="dhis2">DHIS2</option>
+                    </select>
+                </div>
+                <div id="auth-fields" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <input type="text" id="monitor-username"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="monitor-password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Interval (seconds)</label>
+                    <input type="number" id="monitor-interval" value="60" min="10"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+                    <input type="text" id="monitor-tags" placeholder="production, api, critical"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="monitor-enabled" checked
+                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                    <label for="monitor-enabled" class="ml-2 text-sm text-gray-700">Enabled</label>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit"
+                        class="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        Save
+                    </button>
+                    <button type="button" onclick="closeModal()"
+                        class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4">
+        <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Delete Monitor</h3>
+            <p class="text-gray-600 mb-4">Are you sure you want to delete <strong id="delete-monitor-name"></strong>?</p>
+            <input type="hidden" id="delete-monitor-id">
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()"
+                    class="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    Delete
+                </button>
+                <button onclick="closeDeleteModal()"
+                    class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// State
+let monitors = [];
+let tags = [];
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadTags();
+    loadMonitors();
+});
+
+// Load tags for filter
+async function loadTags() {
+    try {
+        const response = await fetch('/api/monitors/tags');
+        tags = await response.json();
+        const select = document.getElementById('tag-filter');
+        select.innerHTML = '<option value="">All tags</option>';
+        tags.forEach(tag => {
+            select.innerHTML += `<option value="${tag}">${tag}</option>`;
+        });
+    } catch (error) {
+        console.error('Failed to load tags:', error);
+    }
+}
+
+// Load monitors
+async function loadMonitors() {
+    const grid = document.getElementById('monitors-grid');
+    const tagFilter = document.getElementById('tag-filter').value;
+
+    try {
+        let url = '/api/monitors';
+        if (tagFilter) {
+            url += `?tag=${encodeURIComponent(tagFilter)}`;
+        }
+        const response = await fetch(url);
+        monitors = await response.json();
+        renderMonitors();
+    } catch (error) {
+        grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-500">Failed to load monitors</div>`;
+    }
+}
+
+// Render monitors grid
+function renderMonitors() {
+    const grid = document.getElementById('monitors-grid');
+
+    if (monitors.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-8 text-gray-500">
+                <p>No monitors configured yet.</p>
+                <p class="text-sm mt-2">Click "Add Monitor" to get started.</p>
+            </div>`;
+        return;
+    }
+
+    grid.innerHTML = monitors.map(monitor => `
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 ${getStatusBorderColor(monitor.last_status)}">
+            <div class="flex justify-between items-start mb-2">
+                <h3 class="font-semibold text-gray-800 truncate" title="${monitor.name}">${monitor.name}</h3>
+                <span class="px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeColor(monitor.last_status)}">
+                    ${monitor.last_status || 'unknown'}
+                </span>
+            </div>
+            <p class="text-sm text-gray-500 truncate mb-2" title="${monitor.url}">${monitor.url}</p>
+            <div class="flex flex-wrap gap-1 mb-3">
+                ${monitor.tags.map(tag => `
+                    <span class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">${tag}</span>
+                `).join('')}
+            </div>
+            <div class="text-xs text-gray-400 mb-3">
+                ${monitor.last_check ? `Last check: ${formatTime(monitor.last_check)}` : 'Never checked'}
+            </div>
+            <div class="flex gap-2">
+                <button onclick="runCheck('${monitor.id}')" title="Run check"
+                    class="p-2 text-green-600 hover:bg-green-50 rounded">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </button>
+                <button onclick="openEditModal('${monitor.id}')" title="Edit"
+                    class="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                </button>
+                <button onclick="openDeleteModal('${monitor.id}', '${monitor.name}')" title="Delete"
+                    class="p-2 text-red-600 hover:bg-red-50 rounded">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Status colors
+function getStatusBorderColor(status) {
+    switch (status) {
+        case 'up': return 'border-green-500';
+        case 'degraded': return 'border-yellow-500';
+        case 'down': return 'border-red-500';
+        default: return 'border-gray-300';
+    }
+}
+
+function getStatusBadgeColor(status) {
+    switch (status) {
+        case 'up': return 'bg-green-100 text-green-800';
+        case 'degraded': return 'bg-yellow-100 text-yellow-800';
+        case 'down': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-600';
+    }
+}
+
+// Format time
+function formatTime(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleString();
+}
+
+// Run check
+async function runCheck(monitorId) {
+    try {
+        const response = await fetch(`/api/monitors/${monitorId}/check`, { method: 'POST' });
+        if (response.ok) {
+            loadMonitors();
+        }
+    } catch (error) {
+        console.error('Check failed:', error);
+    }
+}
+
+// Modal functions
+function openCreateModal() {
+    document.getElementById('modal-title').textContent = 'Add Monitor';
+    document.getElementById('monitor-form').reset();
+    document.getElementById('monitor-id').value = '';
+    document.getElementById('monitor-enabled').checked = true;
+    document.getElementById('auth-fields').classList.add('hidden');
+    document.getElementById('monitor-modal').classList.remove('hidden');
+    document.getElementById('monitor-modal').classList.add('flex');
+}
+
+async function openEditModal(monitorId) {
+    const monitor = monitors.find(m => m.id === monitorId);
+    if (!monitor) return;
+
+    document.getElementById('modal-title').textContent = 'Edit Monitor';
+    document.getElementById('monitor-id').value = monitor.id;
+    document.getElementById('monitor-name').value = monitor.name;
+    document.getElementById('monitor-url').value = monitor.url;
+    document.getElementById('monitor-checker').value = monitor.checker;
+    document.getElementById('monitor-username').value = monitor.username || '';
+    document.getElementById('monitor-password').value = '';
+    document.getElementById('monitor-interval').value = monitor.interval;
+    document.getElementById('monitor-tags').value = monitor.tags.join(', ');
+    document.getElementById('monitor-enabled').checked = monitor.enabled;
+
+    // Show auth fields for dhis2 checker
+    if (monitor.checker === 'dhis2') {
+        document.getElementById('auth-fields').classList.remove('hidden');
+    } else {
+        document.getElementById('auth-fields').classList.add('hidden');
+    }
+
+    document.getElementById('monitor-modal').classList.remove('hidden');
+    document.getElementById('monitor-modal').classList.add('flex');
+}
+
+function closeModal() {
+    document.getElementById('monitor-modal').classList.add('hidden');
+    document.getElementById('monitor-modal').classList.remove('flex');
+}
+
+// Delete modal
+function openDeleteModal(monitorId, monitorName) {
+    document.getElementById('delete-monitor-id').value = monitorId;
+    document.getElementById('delete-monitor-name').textContent = monitorName;
+    document.getElementById('delete-modal').classList.remove('hidden');
+    document.getElementById('delete-modal').classList.add('flex');
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-modal').classList.add('hidden');
+    document.getElementById('delete-modal').classList.remove('flex');
+}
+
+async function confirmDelete() {
+    const monitorId = document.getElementById('delete-monitor-id').value;
+    try {
+        await fetch(`/api/monitors/${monitorId}`, { method: 'DELETE' });
+        closeDeleteModal();
+        loadMonitors();
+        loadTags();
+    } catch (error) {
+        console.error('Delete failed:', error);
+    }
+}
+
+// Form submission
+document.getElementById('monitor-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const monitorId = document.getElementById('monitor-id').value;
+    const tagsInput = document.getElementById('monitor-tags').value;
+    const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+
+    const data = {
+        name: document.getElementById('monitor-name').value,
+        url: document.getElementById('monitor-url').value,
+        checker: document.getElementById('monitor-checker').value,
+        interval: parseInt(document.getElementById('monitor-interval').value),
+        tags: tags,
+        enabled: document.getElementById('monitor-enabled').checked,
+    };
+
+    // Add auth if provided
+    const username = document.getElementById('monitor-username').value;
+    const password = document.getElementById('monitor-password').value;
+    if (username) data.username = username;
+    if (password) data.password = password;
+
+    try {
+        const url = monitorId ? `/api/monitors/${monitorId}` : '/api/monitors';
+        const method = monitorId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (response.ok) {
+            closeModal();
+            loadMonitors();
+            loadTags();
+        } else {
+            const error = await response.json();
+            alert(error.detail || 'Failed to save monitor');
+        }
+    } catch (error) {
+        console.error('Save failed:', error);
+        alert('Failed to save monitor');
+    }
+});
+
+// Checker type change - show/hide auth fields
+document.getElementById('monitor-checker').addEventListener('change', (e) => {
+    if (e.target.value === 'dhis2') {
+        document.getElementById('auth-fields').classList.remove('hidden');
+    } else {
+        document.getElementById('auth-fields').classList.add('hidden');
+    }
+});
+
+// Tag filter change
+document.getElementById('tag-filter').addEventListener('change', () => {
+    loadMonitors();
+});
+
+// Quick check form
 document.getElementById('quick-check-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const url = document.getElementById('check-url').value;
