@@ -58,6 +58,8 @@ def main(
 def check(
     url: str = typer.Argument(..., help="URL to check"),
     checker: str = typer.Option("http", "--checker", "-c", help="Checker to use"),
+    username: str | None = typer.Option(None, "--username", "-u", help="Username for auth"),
+    password: str | None = typer.Option(None, "--password", "-p", help="Password for auth"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed request info"),
 ) -> None:
     """Check if a URL is up."""
@@ -66,7 +68,15 @@ def check(
 
     # Get checker and run
     checker_class = get_checker(checker)
-    checker_instance = checker_class()
+
+    # Build kwargs for checker based on what it supports
+    kwargs: dict[str, object] = {}
+    if username is not None:
+        kwargs["username"] = username
+    if password is not None:
+        kwargs["password"] = password
+
+    checker_instance = checker_class(**kwargs)
     result = checker_instance.check(url, verbose=verbose)
 
     if _json_output:
@@ -109,6 +119,15 @@ def check(
                 rprint(f"  [dim]Server:[/dim] {details['server']}")
             if "content_type" in details:
                 rprint(f"  [dim]Content-Type:[/dim] {details['content_type']}")
+
+            # DHIS2 specific
+            if "version" in details:
+                rprint(f"  [dim]Version:[/dim] {details['version']}")
+            if "system_name" in details:
+                rprint(f"  [dim]System:[/dim] {details['system_name']}")
+            if "server_date" in details:
+                rprint(f"  [dim]Server Date:[/dim] {details['server_date']}")
+
             if "error" in details:
                 rprint(f"  [dim]Error:[/dim] {details['error']}")
 
