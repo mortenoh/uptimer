@@ -25,7 +25,7 @@ help:
 	@echo "  coverage         Run tests with coverage reporting"
 	@echo ""
 	@echo "Running:"
-	@echo "  run              Clean start with docker compose + seed data"
+	@echo "  run              Clean start with docker compose + seed (foreground)"
 	@echo "  run-local        Start server locally (requires local MongoDB)"
 	@echo "  serve            Start dev server with reload"
 	@echo "  stop             Stop docker compose services"
@@ -86,14 +86,14 @@ run:
 	@docker compose down -v
 	@echo ">>> Building fresh images"
 	@docker compose build --no-cache
-	@echo ">>> Starting services"
-	@docker compose up -d --remove-orphans
-	@echo ">>> Waiting for services to be ready..."
+	@echo ">>> Starting MongoDB"
+	@docker compose up -d mongo --remove-orphans
+	@echo ">>> Waiting for MongoDB to be ready..."
 	@sleep 3
 	@echo ">>> Seeding database"
 	@$(UV) run python scripts/seed_data.py
-	@echo ">>> Done! App running at http://localhost:8000"
-	@echo ">>> Use 'make logs' to follow logs"
+	@echo ">>> Starting app (Ctrl+C to stop)"
+	@docker compose up uptimer
 
 run-local:
 	@echo ">>> Starting server locally (requires MongoDB at localhost:27017)"
