@@ -1,12 +1,14 @@
-.PHONY: help install lint test test-durations coverage clean docs docs-serve docs-build serve
+.PHONY: help install lint test test-durations coverage clean docs docs-serve docs-build serve docker-build docker-run docker-push
 
 # ==============================================================================
-# Venv
+# Variables
 # ==============================================================================
 
 UV := $(shell command -v uv 2> /dev/null)
 VENV_DIR?=.venv
 PYTHON := $(VENV_DIR)/bin/python
+IMAGE_NAME := uptimer
+IMAGE_TAG := latest
 
 # ==============================================================================
 # Targets
@@ -22,6 +24,9 @@ help:
 	@echo "  test-durations Show 20 slowest tests"
 	@echo "  coverage       Run tests with coverage reporting"
 	@echo "  serve          Start web UI server"
+	@echo "  docker-build   Build Docker image"
+	@echo "  docker-run     Run Docker container"
+	@echo "  docker-push    Push image to registry"
 	@echo "  docs-serve     Serve documentation locally"
 	@echo "  docs-build     Build documentation site"
 	@echo "  docs           Alias for docs-serve"
@@ -65,6 +70,22 @@ docs-build:
 	@$(UV) run --group docs mkdocs build
 
 docs: docs-serve
+
+# ==============================================================================
+# Docker
+# ==============================================================================
+
+docker-build:
+	@echo ">>> Building Docker image $(IMAGE_NAME):$(IMAGE_TAG)"
+	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+
+docker-run:
+	@echo ">>> Running Docker container"
+	@docker run --rm -p 8000:8000 --env-file .env $(IMAGE_NAME):$(IMAGE_TAG)
+
+docker-push:
+	@echo ">>> Pushing Docker image"
+	@docker push $(IMAGE_NAME):$(IMAGE_TAG)
 
 clean:
 	@echo ">>> Cleaning up"
