@@ -15,7 +15,7 @@ class MonitorCreate(BaseModel):
     checker: str = Field(default="http", description="Checker type")
     username: str | None = Field(default=None, description="Auth username (optional)")
     password: str | None = Field(default=None, description="Auth password (optional)")
-    interval: int = Field(default=60, ge=10, description="Check interval in seconds")
+    interval: int = Field(default=30, ge=10, description="Check interval in seconds")
     schedule: str | None = Field(default=None, description="Cron expression (e.g. '*/5 * * * *')")
     enabled: bool = Field(default=True, description="Whether monitor is active")
     tags: list[str] = Field(default_factory=list, description="Tags for grouping/filtering")
@@ -69,7 +69,7 @@ class Monitor(BaseModel):
     checker: str = "http"
     username: str | None = None
     password: str | None = None
-    interval: int = 60
+    interval: int = 30
     schedule: str | None = None
     enabled: bool = True
     tags: list[str] = Field(default_factory=list)

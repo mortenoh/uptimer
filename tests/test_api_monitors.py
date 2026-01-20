@@ -106,7 +106,7 @@ class TestCreateMonitor:
         assert data["name"] == "Test"
         assert data["url"] == "https://example.com"
         assert data["checker"] == "http"
-        assert data["interval"] == 60
+        assert data["interval"] == 30
         assert data["enabled"] is True
         assert "id" in data
         assert "created_at" in data
