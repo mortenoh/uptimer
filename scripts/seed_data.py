@@ -81,7 +81,7 @@ SEED_MONITORS = [
         interval=30,
         tags=["test", "api", "public"],
     ),
-    # DHIS2 instance with version/system info validation
+    # DHIS2 instances with version/system info validation
     MonitorCreate(
         name="DHIS2 Demo",
         url="https://play.dhis2.org/demo",
@@ -90,6 +90,15 @@ SEED_MONITORS = [
         password="district",
         interval=30,
         tags=["dhis2", "demo", "health"],
+    ),
+    MonitorCreate(
+        name="DHIS2 Dev",
+        url="https://play.dhis2.org/dev",
+        checker="dhis2",
+        username="admin",
+        password="district",
+        interval=30,
+        tags=["dhis2", "dev", "health"],
     ),
 ]
 
