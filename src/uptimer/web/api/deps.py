@@ -13,7 +13,8 @@ def get_storage() -> Storage:
     """Get storage instance (cached)."""
     settings = get_settings()
     return Storage(
-        data_dir=settings.data_dir,
+        mongodb_uri=settings.mongodb_uri,
+        mongodb_db=settings.mongodb_db,
         results_retention=settings.results_retention,
     )
 

@@ -2,18 +2,26 @@
 
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any
 
+import mongomock
 import pytest
+from pymongo import MongoClient
 
 from uptimer.schemas import CheckResultRecord, MonitorCreate, MonitorUpdate
 from uptimer.storage import Storage
 
 
 @pytest.fixture
-def storage(tmp_path: Path) -> Storage:
-    """Create a storage instance with temp directory."""
-    return Storage(data_dir=tmp_path, results_retention=10)
+def storage() -> Storage:
+    """Create a storage instance with mongomock."""
+    client: MongoClient[dict[str, Any]] = mongomock.MongoClient()
+    return Storage(
+        mongodb_uri="mongodb://localhost:27017",
+        mongodb_db="test_uptimer",
+        results_retention=10,
+        client=client,
+    )
 
 
 class TestMonitorCRUD:
@@ -255,3 +263,106 @@ class TestResultOperations:
         assert updated is not None
         assert updated.last_status == "up"
         assert updated.last_check is not None
+
+
+class TestTagOperations:
+    """Tests for tag operations."""
+
+    def test_create_monitor_with_tags(self, storage: Storage) -> None:
+        """Test creating a monitor with tags."""
+        data = MonitorCreate(
+            name="Test",
+            url="https://example.com",
+            tags=["production", "api"],
+        )
+        monitor = storage.create_monitor(data)
+
+        assert monitor.tags == ["production", "api"]
+
+    def test_create_monitor_without_tags(self, storage: Storage) -> None:
+        """Test creating a monitor without tags defaults to empty list."""
+        data = MonitorCreate(name="Test", url="https://example.com")
+        monitor = storage.create_monitor(data)
+
+        assert monitor.tags == []
+
+    def test_update_monitor_tags(self, storage: Storage) -> None:
+        """Test updating monitor tags."""
+        data = MonitorCreate(
+            name="Test",
+            url="https://example.com",
+            tags=["old-tag"],
+        )
+        monitor = storage.create_monitor(data)
+
+        update = MonitorUpdate(tags=["new-tag", "another-tag"])
+        updated = storage.update_monitor(monitor.id, update)
+
+        assert updated is not None
+        assert updated.tags == ["new-tag", "another-tag"]
+
+    def test_list_monitors_filter_by_tag(self, storage: Storage) -> None:
+        """Test filtering monitors by tag."""
+        # Create monitors with different tags
+        storage.create_monitor(MonitorCreate(
+            name="Prod API",
+            url="https://api.example.com",
+            tags=["production", "api"],
+        ))
+        storage.create_monitor(MonitorCreate(
+            name="Staging API",
+            url="https://staging.example.com",
+            tags=["staging", "api"],
+        ))
+        storage.create_monitor(MonitorCreate(
+            name="Prod Web",
+            url="https://www.example.com",
+            tags=["production", "web"],
+        ))
+
+        # Filter by tag
+        prod_monitors = storage.list_monitors(tag="production")
+        assert len(prod_monitors) == 2
+
+        api_monitors = storage.list_monitors(tag="api")
+        assert len(api_monitors) == 2
+
+        staging_monitors = storage.list_monitors(tag="staging")
+        assert len(staging_monitors) == 1
+
+    def test_list_monitors_no_filter(self, storage: Storage) -> None:
+        """Test listing all monitors without tag filter."""
+        storage.create_monitor(MonitorCreate(
+            name="Test 1",
+            url="https://example1.com",
+            tags=["tag1"],
+        ))
+        storage.create_monitor(MonitorCreate(
+            name="Test 2",
+            url="https://example2.com",
+            tags=["tag2"],
+        ))
+
+        all_monitors = storage.list_monitors()
+        assert len(all_monitors) == 2
+
+    def test_list_tags(self, storage: Storage) -> None:
+        """Test listing all unique tags."""
+        storage.create_monitor(MonitorCreate(
+            name="Test 1",
+            url="https://example1.com",
+            tags=["production", "api"],
+        ))
+        storage.create_monitor(MonitorCreate(
+            name="Test 2",
+            url="https://example2.com",
+            tags=["staging", "api"],
+        ))
+
+        tags = storage.list_tags()
+        assert tags == ["api", "production", "staging"]
+
+    def test_list_tags_empty(self, storage: Storage) -> None:
+        """Test listing tags when no monitors exist."""
+        tags = storage.list_tags()
+        assert tags == []

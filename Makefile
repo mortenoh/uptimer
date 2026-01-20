@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-performance coverage clean docs docs-serve docs-build serve run docker-build docker-run docker-push
+.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-local stop logs seed clean docs docs-serve docs-build
 
 # ==============================================================================
 # Variables
@@ -7,31 +7,41 @@
 UV := $(shell command -v uv 2> /dev/null)
 VENV_DIR?=.venv
 PYTHON := $(VENV_DIR)/bin/python
-IMAGE_NAME := uptimer
-IMAGE_TAG := latest
 
 # ==============================================================================
-# Targets
+# Help
 # ==============================================================================
 
 help:
 	@echo "Usage: make [target]"
 	@echo ""
-	@echo "Targets:"
-	@echo "  install        Install dependencies"
-	@echo "  lint           Run linter and type checker"
-	@echo "  test           Run tests"
+	@echo "Development:"
+	@echo "  install          Install dependencies"
+	@echo "  lint             Run linter and type checker"
+	@echo "  test             Run unit tests"
+	@echo "  test-integration Run integration tests (require network)"
+	@echo "  test-all         Run all tests"
 	@echo "  test-performance Show 20 slowest tests"
-	@echo "  coverage       Run tests with coverage reporting"
-	@echo "  serve          Start web UI server (with reload)"
-	@echo "  run            Initialize config and start server"
-	@echo "  docker-build   Build Docker image"
-	@echo "  docker-run     Run Docker container"
-	@echo "  docker-push    Push image to registry"
-	@echo "  docs-serve     Serve documentation locally"
-	@echo "  docs-build     Build documentation site"
-	@echo "  docs           Alias for docs-serve"
-	@echo "  clean          Clean up temporary files"
+	@echo "  coverage         Run tests with coverage reporting"
+	@echo ""
+	@echo "Running:"
+	@echo "  run              Clean start with docker compose + seed data"
+	@echo "  run-local        Start server locally (requires local MongoDB)"
+	@echo "  serve            Start dev server with reload"
+	@echo "  stop             Stop docker compose services"
+	@echo "  logs             Follow docker compose logs"
+	@echo "  seed             Seed MongoDB with sample monitors"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  docs             Serve documentation locally"
+	@echo "  docs-build       Build documentation site"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  clean            Clean up temporary files and containers"
+
+# ==============================================================================
+# Development
+# ==============================================================================
 
 install:
 	@echo ">>> Installing dependencies"
@@ -46,7 +56,15 @@ lint:
 	@$(UV) run pyright
 
 test:
-	@echo ">>> Running tests"
+	@echo ">>> Running unit tests"
+	@$(UV) run pytest -q -m "not integration"
+
+test-integration:
+	@echo ">>> Running integration tests"
+	@$(UV) run pytest -q -m integration
+
+test-all:
+	@echo ">>> Running all tests"
 	@$(UV) run pytest -q
 
 test-performance:
@@ -55,16 +73,49 @@ test-performance:
 
 coverage:
 	@echo ">>> Running tests with coverage"
-	@$(UV) run coverage run -m pytest -q
+	@$(UV) run coverage run -m pytest -q -m "not integration"
 	@$(UV) run coverage report
 	@$(UV) run coverage xml
+
+# ==============================================================================
+# Running
+# ==============================================================================
+
+run:
+	@echo ">>> Stopping and cleaning up containers"
+	@docker compose down -v
+	@echo ">>> Building fresh images"
+	@docker compose build --no-cache
+	@echo ">>> Starting services"
+	@docker compose up -d --remove-orphans
+	@echo ">>> Waiting for services to be ready..."
+	@sleep 3
+	@echo ">>> Seeding database"
+	@$(UV) run python scripts/seed_data.py
+	@echo ">>> Done! App running at http://localhost:8000"
+	@echo ">>> Use 'make logs' to follow logs"
+
+run-local:
+	@echo ">>> Starting server locally (requires MongoDB at localhost:27017)"
+	@$(UV) run uptimer serve
 
 serve:
 	@$(UV) run uptimer serve --reload
 
-run:
-	@$(UV) run uptimer init 2>/dev/null || true
-	@$(UV) run uptimer serve
+stop:
+	@echo ">>> Stopping services"
+	@docker compose down
+
+logs:
+	@docker compose logs -f
+
+seed:
+	@echo ">>> Seeding MongoDB with sample monitors"
+	@$(UV) run python scripts/seed_data.py
+
+# ==============================================================================
+# Documentation
+# ==============================================================================
 
 docs-serve:
 	@echo ">>> Serving documentation at http://127.0.0.1:8000"
@@ -77,23 +128,13 @@ docs-build:
 docs: docs-serve
 
 # ==============================================================================
-# Docker
+# Cleanup
 # ==============================================================================
 
-docker-build:
-	@echo ">>> Building Docker image $(IMAGE_NAME):$(IMAGE_TAG)"
-	@docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
-
-docker-run:
-	@echo ">>> Running Docker container"
-	@docker run --rm -p 8000:8000 --env-file .env $(IMAGE_NAME):$(IMAGE_TAG)
-
-docker-push:
-	@echo ">>> Pushing Docker image"
-	@docker push $(IMAGE_NAME):$(IMAGE_TAG)
-
 clean:
-	@echo ">>> Cleaning up"
+	@echo ">>> Stopping containers"
+	@docker compose down -v 2>/dev/null || true
+	@echo ">>> Cleaning up files"
 	@find . -type f -name "*.pyc" -delete
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true

@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "pyyaml>=6.0.0",
     "itsdangerous>=2.0.0",
+    "pymongo>=4.0.0",
 ]
 
 [project.scripts]
@@ -34,6 +35,8 @@ dev = [
     "ruff>=0.2.0",
     "pyright>=1.1.350",
     "coverage[toml]>=7.4.0",
+    "mongomock>=4.1.0",
+    "types-PyYAML>=6.0.0",
 ]
 docs = [
     "mkdocs>=1.6.0",
@@ -55,6 +58,9 @@ convention = "google"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (require network access)",
+]
 
 [tool.coverage.run]
 source = ["src"]

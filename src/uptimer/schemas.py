@@ -16,6 +16,7 @@ class MonitorCreate(BaseModel):
     password: str | None = Field(default=None, description="Auth password (optional)")
     interval: int = Field(default=60, ge=10, description="Check interval in seconds")
     enabled: bool = Field(default=True, description="Whether monitor is active")
+    tags: list[str] = Field(default_factory=list, description="Tags for grouping/filtering")
 
     @field_validator("name")
     @classmethod
@@ -36,6 +37,7 @@ class MonitorUpdate(BaseModel):
     password: str | None = None
     interval: int | None = Field(default=None, ge=10)
     enabled: bool | None = None
+    tags: list[str] | None = None
 
     @field_validator("name")
     @classmethod
@@ -57,6 +59,7 @@ class Monitor(BaseModel):
     password: str | None = None
     interval: int = 60
     enabled: bool = True
+    tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     last_check: datetime | None = None

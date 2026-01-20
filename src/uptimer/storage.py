@@ -1,74 +1,79 @@
-"""JSON file-based storage for monitors and check results."""
+"""MongoDB storage for monitors and check results."""
 
-import json
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
+
+from pymongo import ASCENDING, DESCENDING, MongoClient
+from pymongo.collection import Collection
+from pymongo.database import Database
 
 from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
 from uptimer.validation import validate_checker, validate_interval, validate_url
 
 
 class Storage:
-    """JSON file-based storage for monitors and results."""
+    """MongoDB storage for monitors and results."""
 
-    def __init__(self, data_dir: Path, results_retention: int = 1000) -> None:
+    def __init__(
+        self,
+        mongodb_uri: str = "mongodb://localhost:27017",
+        mongodb_db: str = "uptimer",
+        results_retention: int = 1000,
+        client: MongoClient[dict[str, Any]] | None = None,
+    ) -> None:
         """Initialize storage.
 
         Args:
-            data_dir: Directory to store JSON files
+            mongodb_uri: MongoDB connection URI
+            mongodb_db: Database name
             results_retention: Max results to keep per monitor
+            client: Optional MongoClient instance (for testing with mongomock)
         """
-        self.data_dir = data_dir
         self.results_retention = results_retention
-        self.monitors_file = data_dir / "monitors.json"
-        self.results_file = data_dir / "results.json"
-        self._ensure_data_dir()
+        self._client: MongoClient[dict[str, Any]] = client or MongoClient(mongodb_uri)
+        self._db: Database[dict[str, Any]] = self._client[mongodb_db]
+        self._monitors: Collection[dict[str, Any]] = self._db["monitors"]
+        self._results: Collection[dict[str, Any]] = self._db["results"]
+        self._ensure_indexes()
 
-    def _ensure_data_dir(self) -> None:
-        """Create data directory if it doesn't exist."""
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-
-    def _load_monitors(self) -> list[dict[str, Any]]:
-        """Load monitors from JSON file."""
-        if not self.monitors_file.exists():
-            return []
-        with open(self.monitors_file) as f:
-            data: list[dict[str, Any]] = json.load(f)
-            return data
-
-    def _save_monitors(self, monitors: list[dict[str, Any]]) -> None:
-        """Save monitors to JSON file."""
-        with open(self.monitors_file, "w") as f:
-            json.dump(monitors, f, indent=2, default=str)
-
-    def _load_results(self) -> list[dict[str, Any]]:
-        """Load results from JSON file."""
-        if not self.results_file.exists():
-            return []
-        with open(self.results_file) as f:
-            data: list[dict[str, Any]] = json.load(f)
-            return data
-
-    def _save_results(self, results: list[dict[str, Any]]) -> None:
-        """Save results to JSON file."""
-        with open(self.results_file, "w") as f:
-            json.dump(results, f, indent=2, default=str)
+    def _ensure_indexes(self) -> None:
+        """Create indexes for efficient queries."""
+        self._results.create_index([("monitor_id", ASCENDING)])
+        self._results.create_index([("monitor_id", ASCENDING), ("checked_at", DESCENDING)])
+        self._monitors.create_index([("tags", ASCENDING)])
 
     # Monitor operations
 
-    def list_monitors(self) -> list[Monitor]:
-        """List all monitors."""
-        data = self._load_monitors()
-        return [Monitor(**m) for m in data]
+    def list_monitors(self, tag: str | None = None) -> list[Monitor]:
+        """List all monitors, optionally filtered by tag.
+
+        Args:
+            tag: Optional tag to filter by
+
+        Returns:
+            List of monitors
+        """
+        query: dict[str, Any] = {}
+        if tag:
+            query["tags"] = tag
+        docs = self._monitors.find(query)
+        return [Monitor(**self._doc_to_monitor(doc)) for doc in docs]
+
+    def list_tags(self) -> list[str]:
+        """List all unique tags across all monitors.
+
+        Returns:
+            Sorted list of unique tags
+        """
+        tags: list[str] = self._monitors.distinct("tags")
+        return sorted(tags)
 
     def get_monitor(self, monitor_id: str) -> Monitor | None:
         """Get a monitor by ID."""
-        data = self._load_monitors()
-        for m in data:
-            if m["id"] == monitor_id:
-                return Monitor(**m)
+        doc = self._monitors.find_one({"_id": monitor_id})
+        if doc:
+            return Monitor(**self._doc_to_monitor(doc))
         return None
 
     def create_monitor(self, data: MonitorCreate) -> Monitor:
@@ -89,24 +94,27 @@ class Storage:
         validate_interval(data.interval)
 
         now = datetime.now(timezone.utc)
-        monitor = Monitor(
-            id=str(uuid.uuid4()),
-            name=data.name,
-            url=url,
-            checker=data.checker,
-            username=data.username,
-            password=data.password,
-            interval=data.interval,
-            enabled=data.enabled,
-            created_at=now,
-            updated_at=now,
-        )
+        monitor_id = str(uuid.uuid4())
 
-        monitors = self._load_monitors()
-        monitors.append(monitor.model_dump(mode="json"))
-        self._save_monitors(monitors)
+        doc = {
+            "_id": monitor_id,
+            "name": data.name,
+            "url": url,
+            "checker": data.checker,
+            "username": data.username,
+            "password": data.password,
+            "interval": data.interval,
+            "enabled": data.enabled,
+            "tags": data.tags,
+            "created_at": now,
+            "updated_at": now,
+            "last_check": None,
+            "last_status": None,
+        }
 
-        return monitor
+        self._monitors.insert_one(doc)
+
+        return Monitor(**self._doc_to_monitor(doc))
 
     def update_monitor(self, monitor_id: str, data: MonitorUpdate) -> Monitor | None:
         """Update a monitor.
@@ -121,29 +129,28 @@ class Storage:
         Raises:
             ValueError: If validation fails
         """
-        monitors = self._load_monitors()
+        doc = self._monitors.find_one({"_id": monitor_id})
+        if not doc:
+            return None
 
-        for i, m in enumerate(monitors):
-            if m["id"] == monitor_id:
-                # Apply updates
-                update_data = data.model_dump(exclude_unset=True)
+        # Apply updates
+        update_data = data.model_dump(exclude_unset=True)
 
-                # Validate updated fields
-                if "url" in update_data:
-                    update_data["url"] = validate_url(update_data["url"])
-                if "checker" in update_data:
-                    validate_checker(update_data["checker"])
-                if "interval" in update_data:
-                    validate_interval(update_data["interval"])
+        # Validate updated fields
+        if "url" in update_data:
+            update_data["url"] = validate_url(update_data["url"])
+        if "checker" in update_data:
+            validate_checker(update_data["checker"])
+        if "interval" in update_data:
+            validate_interval(update_data["interval"])
 
-                for key, value in update_data.items():
-                    m[key] = value
+        update_data["updated_at"] = datetime.now(timezone.utc)
 
-                m["updated_at"] = datetime.now(timezone.utc).isoformat()
-                monitors[i] = m
-                self._save_monitors(monitors)
-                return Monitor(**m)
+        self._monitors.update_one({"_id": monitor_id}, {"$set": update_data})
 
+        updated_doc = self._monitors.find_one({"_id": monitor_id})
+        if updated_doc:
+            return Monitor(**self._doc_to_monitor(updated_doc))
         return None
 
     def delete_monitor(self, monitor_id: str) -> bool:
@@ -155,23 +162,16 @@ class Storage:
         Returns:
             True if deleted, False if not found
         """
-        monitors = self._load_monitors()
-        initial_count = len(monitors)
-        monitors = [m for m in monitors if m["id"] != monitor_id]
+        result = self._monitors.delete_one({"_id": monitor_id})
 
-        if len(monitors) < initial_count:
-            self._save_monitors(monitors)
+        if result.deleted_count > 0:
             # Also delete associated results
-            results = self._load_results()
-            results = [r for r in results if r["monitor_id"] != monitor_id]
-            self._save_results(results)
+            self._results.delete_many({"monitor_id": monitor_id})
             return True
 
         return False
 
-    def update_monitor_status(
-        self, monitor_id: str, status: str, checked_at: datetime
-    ) -> None:
+    def update_monitor_status(self, monitor_id: str, status: str, checked_at: datetime) -> None:
         """Update monitor's last check status.
 
         Args:
@@ -179,14 +179,16 @@ class Storage:
             status: Check status
             checked_at: When check was performed
         """
-        monitors = self._load_monitors()
-        for m in monitors:
-            if m["id"] == monitor_id:
-                m["last_status"] = status
-                m["last_check"] = checked_at.isoformat()
-                m["updated_at"] = datetime.now(timezone.utc).isoformat()
-                break
-        self._save_monitors(monitors)
+        self._monitors.update_one(
+            {"_id": monitor_id},
+            {
+                "$set": {
+                    "last_status": status,
+                    "last_check": checked_at,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
 
     # Result operations
 
@@ -196,29 +198,32 @@ class Storage:
         Args:
             result: Check result to add
         """
-        results = self._load_results()
-        results.append(result.model_dump(mode="json"))
+        doc = result.model_dump(mode="json")
+        doc["_id"] = doc.pop("id")
+        self._results.insert_one(doc)
 
         # Apply retention limit per monitor
-        monitor_results: dict[str, list[dict[str, Any]]] = {}
-        for r in results:
-            mid = r["monitor_id"]
-            if mid not in monitor_results:
-                monitor_results[mid] = []
-            monitor_results[mid].append(r)
+        self._enforce_retention(result.monitor_id)
 
-        # Keep only the most recent results per monitor
-        trimmed: list[dict[str, Any]] = []
-        for mid, mresults in monitor_results.items():
-            # Sort by checked_at descending
-            mresults.sort(key=lambda x: x["checked_at"], reverse=True)
-            trimmed.extend(mresults[: self.results_retention])
+    def _enforce_retention(self, monitor_id: str) -> None:
+        """Enforce results retention limit for a monitor.
 
-        self._save_results(trimmed)
+        Args:
+            monitor_id: ID of monitor to enforce retention for
+        """
+        count = self._results.count_documents({"monitor_id": monitor_id})
+        if count > self.results_retention:
+            # Find the oldest results to delete
+            excess = count - self.results_retention
+            oldest = (
+                self._results.find({"monitor_id": monitor_id}, {"_id": 1}).sort("checked_at", ASCENDING).limit(excess)
+            )
 
-    def get_results(
-        self, monitor_id: str, limit: int = 100
-    ) -> list[CheckResultRecord]:
+            ids_to_delete = [doc["_id"] for doc in oldest]
+            if ids_to_delete:
+                self._results.delete_many({"_id": {"$in": ids_to_delete}})
+
+    def get_results(self, monitor_id: str, limit: int = 100) -> list[CheckResultRecord]:
         """Get check results for a monitor.
 
         Args:
@@ -228,8 +233,33 @@ class Storage:
         Returns:
             List of check results, most recent first
         """
-        results = self._load_results()
-        monitor_results = [r for r in results if r["monitor_id"] == monitor_id]
-        # Sort by checked_at descending
-        monitor_results.sort(key=lambda x: x["checked_at"], reverse=True)
-        return [CheckResultRecord(**r) for r in monitor_results[:limit]]
+        docs = self._results.find({"monitor_id": monitor_id}).sort("checked_at", DESCENDING).limit(limit)
+        return [CheckResultRecord(**self._doc_to_result(doc)) for doc in docs]
+
+    # Helper methods
+
+    def _doc_to_monitor(self, doc: dict[str, Any]) -> dict[str, Any]:
+        """Convert MongoDB document to monitor dict.
+
+        Args:
+            doc: MongoDB document
+
+        Returns:
+            Dict suitable for Monitor model
+        """
+        result = dict(doc)
+        result["id"] = result.pop("_id")
+        return result
+
+    def _doc_to_result(self, doc: dict[str, Any]) -> dict[str, Any]:
+        """Convert MongoDB document to result dict.
+
+        Args:
+            doc: MongoDB document
+
+        Returns:
+            Dict suitable for CheckResultRecord model
+        """
+        result = dict(doc)
+        result["id"] = result.pop("_id")
+        return result

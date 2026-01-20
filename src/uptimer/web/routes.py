@@ -31,10 +31,7 @@ async def index(request: Request, user: str | None = Depends(get_current_user)) 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str | None = None) -> HTMLResponse:
     """Login page."""
-    return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "error": error},
-    )
+    return templates.TemplateResponse(request, "login.html", {"error": error})
 
 
 @router.post("/login")
@@ -65,9 +62,4 @@ async def dashboard(request: Request, user: str | None = Depends(get_current_use
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "user": user},
-    )
-
-
+    return templates.TemplateResponse(request, "dashboard.html", {"user": user})

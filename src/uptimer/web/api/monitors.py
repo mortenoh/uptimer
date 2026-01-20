@@ -15,11 +15,21 @@ router = APIRouter(prefix="/api/monitors", tags=["monitors"])
 
 @router.get("", response_model=list[Monitor])
 async def list_monitors(
+    tag: str | None = Query(default=None, description="Filter by tag"),
     _user: str = Depends(require_auth),
     storage: Storage = Depends(get_storage),
 ) -> list[Monitor]:
-    """List all monitors."""
-    return storage.list_monitors()
+    """List all monitors, optionally filtered by tag."""
+    return storage.list_monitors(tag=tag)
+
+
+@router.get("/tags", response_model=list[str])
+async def list_tags(
+    _user: str = Depends(require_auth),
+    storage: Storage = Depends(get_storage),
+) -> list[str]:
+    """List all unique tags."""
+    return storage.list_tags()
 
 
 @router.post("", response_model=Monitor, status_code=status.HTTP_201_CREATED)
@@ -33,7 +43,7 @@ async def create_monitor(
         return storage.create_monitor(data)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(e),
         ) from e
 
@@ -66,7 +76,7 @@ async def update_monitor(
         monitor = storage.update_monitor(monitor_id, data)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(e),
         ) from e
 

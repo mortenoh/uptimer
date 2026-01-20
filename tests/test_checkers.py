@@ -94,3 +94,47 @@ def test_status_enum_values() -> None:
     assert Status.UP.value == "up"
     assert Status.DEGRADED.value == "degraded"
     assert Status.DOWN.value == "down"
+
+
+# DHIS2 integration tests
+class TestDhis2Checker:
+    """Integration tests for DHIS2 checker."""
+
+    @pytest.mark.integration
+    def test_dhis2_checker_with_valid_credentials(self) -> None:
+        """Test DHIS2 checker returns version info with valid credentials."""
+        from uptimer.checkers.dhis2 import Dhis2Checker
+
+        checker = Dhis2Checker(username="admin", password="district", timeout=30.0)
+        result = checker.check("https://play.dhis2.org/demo")
+
+        assert result.status == Status.UP
+        assert "version" in result.details
+        assert "system_name" in result.details
+        assert "revision" in result.details
+        assert result.details["version"] is not None
+
+    @pytest.mark.integration
+    def test_dhis2_checker_with_invalid_credentials(self) -> None:
+        """Test DHIS2 checker fails with invalid credentials."""
+        from uptimer.checkers.dhis2 import Dhis2Checker
+
+        checker = Dhis2Checker(username="invalid", password="invalid", timeout=30.0)
+        result = checker.check("https://play.dhis2.org/demo")
+
+        assert result.status == Status.DOWN
+        assert result.message == "Authentication failed"
+
+    @pytest.mark.integration
+    def test_dhis2_checker_captures_base_url(self) -> None:
+        """Test DHIS2 checker resolves and captures the final base URL."""
+        from uptimer.checkers.dhis2 import Dhis2Checker
+
+        checker = Dhis2Checker(username="admin", password="district", timeout=30.0)
+        result = checker.check("https://play.dhis2.org/demo")
+
+        assert result.status == Status.UP
+        assert "base_url" in result.details
+        assert "api_url" in result.details
+        # URL should have been resolved through redirects
+        assert "play.im.dhis2.org" in result.details["base_url"]

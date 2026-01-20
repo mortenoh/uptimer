@@ -1,10 +1,12 @@
 """Tests for monitor API endpoints."""
 
-from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+import mongomock
 import pytest
 from fastapi.testclient import TestClient
+from pymongo import MongoClient
 
 from uptimer.settings import clear_settings_cache
 from uptimer.storage import Storage
@@ -20,9 +22,15 @@ def clear_caches() -> None:
 
 
 @pytest.fixture
-def storage(tmp_path: Path) -> Storage:
-    """Create a storage instance with temp directory."""
-    return Storage(data_dir=tmp_path, results_retention=100)
+def storage() -> Storage:
+    """Create a storage instance with mongomock."""
+    client: MongoClient[dict[str, Any]] = mongomock.MongoClient()
+    return Storage(
+        mongodb_uri="mongodb://localhost:27017",
+        mongodb_db="test_uptimer",
+        results_retention=100,
+        client=client,
+    )
 
 
 @pytest.fixture
@@ -275,8 +283,9 @@ class TestRunCheck:
         response = auth_client.post("/api/monitors/nonexistent/check")
         assert response.status_code == 404
 
+    @pytest.mark.integration
     def test_run_check(self, auth_client: TestClient) -> None:
-        """Test running a check."""
+        """Test running a check against real endpoint."""
         # Create monitor
         create_response = auth_client.post(
             "/api/monitors",

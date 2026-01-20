@@ -38,8 +38,9 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
 
-    # Storage
-    data_dir: Path = Path("data")
+    # Storage (MongoDB)
+    mongodb_uri: str = "mongodb://localhost:27017"
+    mongodb_db: str = "uptimer"
     results_retention: int = 1000  # Max results per monitor
 
     # Monitors (from YAML)

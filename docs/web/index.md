@@ -42,9 +42,65 @@ Test any URL directly from the dashboard:
 2. Click "Check"
 3. See the result with status, response time, and details
 
-### API Endpoint
+### REST API
 
-The web UI exposes an API for programmatic access:
+The web UI exposes a REST API for programmatic access. All endpoints require authentication.
+
+#### Monitors
+
+```bash
+# List all monitors
+curl -b cookies.txt "http://localhost:8000/api/monitors"
+
+# List monitors filtered by tag
+curl -b cookies.txt "http://localhost:8000/api/monitors?tag=production"
+
+# List all tags
+curl -b cookies.txt "http://localhost:8000/api/monitors/tags"
+
+# Create a monitor
+curl -X POST -b cookies.txt "http://localhost:8000/api/monitors" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Service",
+    "url": "https://example.com",
+    "checker": "http",
+    "tags": ["production", "api"],
+    "interval": 60
+  }'
+
+# Get a monitor
+curl -b cookies.txt "http://localhost:8000/api/monitors/{id}"
+
+# Update a monitor
+curl -X PUT -b cookies.txt "http://localhost:8000/api/monitors/{id}" \
+  -H "Content-Type: application/json" \
+  -d '{"tags": ["production", "api", "critical"]}'
+
+# Delete a monitor
+curl -X DELETE -b cookies.txt "http://localhost:8000/api/monitors/{id}"
+
+# Run a check
+curl -X POST -b cookies.txt "http://localhost:8000/api/monitors/{id}/check"
+
+# Get check results
+curl -b cookies.txt "http://localhost:8000/api/monitors/{id}/results?limit=100"
+```
+
+#### Monitor Fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | Yes | - | Display name (1-100 chars) |
+| `url` | string | Yes | - | URL to monitor |
+| `checker` | string | No | `http` | Checker type (`http`, `dhis2`) |
+| `username` | string | No | `null` | Auth username |
+| `password` | string | No | `null` | Auth password |
+| `interval` | int | No | `60` | Check interval in seconds (min 10) |
+| `enabled` | bool | No | `true` | Whether monitor is active |
+| `tags` | list | No | `[]` | Tags for grouping/filtering |
+
+#### Quick Check
 
 ```bash
 # Check a URL (requires authentication)
