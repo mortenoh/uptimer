@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Any
 
+from croniter import croniter
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -15,6 +16,7 @@ class MonitorCreate(BaseModel):
     username: str | None = Field(default=None, description="Auth username (optional)")
     password: str | None = Field(default=None, description="Auth password (optional)")
     interval: int = Field(default=60, ge=10, description="Check interval in seconds")
+    schedule: str | None = Field(default=None, description="Cron expression (e.g. '*/5 * * * *')")
     enabled: bool = Field(default=True, description="Whether monitor is active")
     tags: list[str] = Field(default_factory=list, description="Tags for grouping/filtering")
 
@@ -26,6 +28,15 @@ class MonitorCreate(BaseModel):
             raise ValueError("Name cannot be empty or whitespace only")
         return v.strip()
 
+    @field_validator("schedule")
+    @classmethod
+    def validate_cron_expression(cls, v: str | None) -> str | None:
+        """Validate cron expression if provided."""
+        if v is not None:
+            if not croniter.is_valid(v):
+                raise ValueError(f"Invalid cron expression: {v}")
+        return v
+
 
 class MonitorUpdate(BaseModel):
     """Model for updating a monitor. All fields optional."""
@@ -36,6 +47,7 @@ class MonitorUpdate(BaseModel):
     username: str | None = None
     password: str | None = None
     interval: int | None = Field(default=None, ge=10)
+    schedule: str | None = None
     enabled: bool | None = None
     tags: list[str] | None = None
 
@@ -58,6 +70,7 @@ class Monitor(BaseModel):
     username: str | None = None
     password: str | None = None
     interval: int = 60
+    schedule: str | None = None
     enabled: bool = True
     tags: list[str] = Field(default_factory=list)
     created_at: datetime

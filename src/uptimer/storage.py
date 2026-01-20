@@ -104,6 +104,7 @@ class Storage:
             "username": data.username,
             "password": data.password,
             "interval": data.interval,
+            "schedule": data.schedule,
             "enabled": data.enabled,
             "tags": data.tags,
             "created_at": now,
