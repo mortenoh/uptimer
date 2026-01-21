@@ -2,7 +2,29 @@
 
 For a conceptual overview of Uptimer's architecture and features, see the [Introduction Guide](introduction.md).
 
-## Installation
+## Quick Start with Docker
+
+The easiest way to run Uptimer is using the pre-built Docker images from GitHub Container Registry:
+
+```bash
+# Download the compose file
+curl -O https://raw.githubusercontent.com/mortenoh/uptimer/main/compose.ghcr.yml
+
+# Start all services
+docker compose -f compose.ghcr.yml up -d
+```
+
+This starts MongoDB, the API server, and the frontend. Open http://localhost:3000 and login with `admin` / `admin`.
+
+To stop:
+
+```bash
+docker compose -f compose.ghcr.yml down
+```
+
+## Local Installation
+
+If you prefer to run locally or want to contribute:
 
 ```bash
 # Clone the repository
@@ -13,7 +35,7 @@ cd uptimer
 uv sync
 ```
 
-## Quick Start
+## Local Quick Start
 
 ### 1. Start MongoDB
 

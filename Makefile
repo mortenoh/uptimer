@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-all run-local dev stop logs seed clean docs docs-serve docs-build frontend frontend-build frontend-install docker-build rebuild
+.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-all run-ghcr dev stop logs seed clean docs docs-serve docs-build frontend frontend-build frontend-install docker-build rebuild
 
 # ==============================================================================
 # Variables
@@ -28,6 +28,7 @@ help:
 	@echo "Running:"
 	@echo "  run              Docker: MongoDB + API only (no frontend)"
 	@echo "  run-all          Docker: Full stack with seeding"
+	@echo "  run-ghcr         Docker: Full stack using pre-built ghcr.io images"
 	@echo "  dev              Local: Start MongoDB in Docker, print instructions"
 	@echo "  serve            Start API dev server with reload"
 	@echo "  frontend         Start frontend dev server"
@@ -109,6 +110,13 @@ run-all:
 	@docker compose --profile seed up seed
 	@echo ">>> API: http://localhost:8000 | Frontend: http://localhost:3000"
 	@docker compose logs -f
+
+run-ghcr:
+	@echo ">>> Starting all services using pre-built ghcr.io images"
+	@docker compose -f compose.ghcr.yml pull
+	@docker compose -f compose.ghcr.yml up -d
+	@echo ">>> API: http://localhost:8000 | Frontend: http://localhost:3000"
+	@docker compose -f compose.ghcr.yml logs -f
 
 dev:
 	@echo ">>> Starting MongoDB in Docker, API and frontend locally"

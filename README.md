@@ -17,18 +17,34 @@ Service uptime monitoring with a modern React dashboard.
 
 ## Quick Start
 
-### Using Docker Compose
+### Using Pre-built Images (Recommended)
+
+The easiest way to run Uptimer is using the pre-built images from GitHub Container Registry:
 
 ```bash
-docker-compose up -d
+# Download the compose file
+curl -O https://raw.githubusercontent.com/mortenoh/uptimer/main/compose.ghcr.yml
+
+# Start all services
+docker compose -f compose.ghcr.yml up -d
 ```
 
 This starts:
 - MongoDB on port 27017
-- API server on port 8000
-- Frontend on port 3000
+- API server on port 8000 (`ghcr.io/mortenoh/uptimer:main`)
+- Frontend on port 3000 (`ghcr.io/mortenoh/uptimer-frontend:main`)
 
 Open http://localhost:3000 and login with `admin` / `admin`.
+
+### Building from Source
+
+If you want to build the images locally:
+
+```bash
+git clone https://github.com/mortenoh/uptimer.git
+cd uptimer
+docker compose up -d
+```
 
 ### Local Development
 
@@ -220,6 +236,28 @@ Uses standard cron syntax: `minute hour day month weekday`
 3. Jobs persist in MongoDB (`scheduler_jobs` collection)
 4. When monitors are created/updated/deleted, schedules update automatically
 5. Disabled monitors (`enabled: false`) are not scheduled
+
+## Docker Images
+
+Pre-built Docker images are available on GitHub Container Registry:
+
+| Image | Description |
+|-------|-------------|
+| `ghcr.io/mortenoh/uptimer:main` | API server |
+| `ghcr.io/mortenoh/uptimer-frontend:main` | React frontend |
+
+### Tags
+
+- `main` - Latest from main branch
+- `vX.Y.Z` - Specific version release
+- `sha-XXXXXXX` - Specific commit
+
+### Pull Images
+
+```bash
+docker pull ghcr.io/mortenoh/uptimer:main
+docker pull ghcr.io/mortenoh/uptimer-frontend:main
+```
 
 ## Configuration
 
