@@ -1,10 +1,10 @@
 """Background scheduler for running monitor checks."""
 
+# APScheduler doesn't have type stubs, suppress unknown member type errors
 # pyright: reportUnknownMemberType=false
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 import structlog
 from apscheduler.jobstores.mongodb import MongoDBJobStore  # type: ignore[import-untyped]
@@ -12,88 +12,15 @@ from apscheduler.schedulers.background import BackgroundScheduler  # type: ignor
 from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
 from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
 
-from uptimer.schemas import CheckResultRecord, Monitor, Stage
+from uptimer.pipeline import run_pipeline
+from uptimer.schemas import CheckResultRecord, Monitor
 from uptimer.settings import get_settings
-from uptimer.stages import CheckContext, get_stage
 from uptimer.storage import Storage
 
 logger = structlog.get_logger()
 
 # Global scheduler instance
 _scheduler: BackgroundScheduler | None = None
-
-
-def _instantiate_stage(stage: Stage) -> Any:
-    """Instantiate a stage with the appropriate options from Stage config."""
-    stage_class = get_stage(stage.type)
-
-    kwargs: dict[str, Any] = {}
-
-    if stage.username:
-        kwargs["username"] = stage.username
-    if stage.password:
-        kwargs["password"] = stage.password
-    if stage.expr:
-        kwargs["expr"] = stage.expr
-    if stage.store_as:
-        kwargs["store_as"] = stage.store_as
-    if stage.min is not None:
-        kwargs["min_value"] = stage.min
-    if stage.max is not None:
-        kwargs["max_value"] = stage.max
-    if stage.value:
-        kwargs["value_ref"] = stage.value
-    if stage.pattern:
-        kwargs["pattern"] = stage.pattern
-    if stage.negate:
-        kwargs["negate"] = stage.negate
-    if stage.max_age is not None:
-        kwargs["max_age"] = stage.max_age
-    if stage.warn_days:
-        kwargs["warn_days"] = stage.warn_days
-    if stage.port is not None:
-        kwargs["port"] = stage.port
-    if stage.expected_ip:
-        kwargs["expected_ip"] = stage.expected_ip
-    if stage.schema_:
-        kwargs["schema"] = stage.schema_
-    if stage.headers:
-        kwargs["headers"] = stage.headers
-
-    try:
-        return stage_class(**kwargs)
-    except TypeError:
-        return stage_class()
-
-
-def _run_pipeline(url: str, pipeline: list[Stage]) -> tuple[str, str, float, dict[str, object]]:
-    """Run all pipeline stages for a monitor and return aggregated results."""
-    context = CheckContext(url=url)
-
-    all_details: dict[str, object] = {}
-    total_elapsed_ms = 0.0
-    final_status = "up"
-    messages: list[str] = []
-
-    for i, stage in enumerate(pipeline):
-        checker = _instantiate_stage(stage)
-        result = checker.check(url, verbose=False, context=context)
-
-        total_elapsed_ms += result.elapsed_ms
-        messages.append(f"{stage.type}: {result.message}")
-
-        stage_key = f"{stage.type}" if pipeline.count(stage) == 1 else f"{stage.type}_{i}"
-        all_details[stage_key] = result.details
-
-        if result.status.value == "down":
-            final_status = "down"
-        elif result.status.value == "degraded" and final_status != "down":
-            final_status = "degraded"
-
-    if context.values:
-        all_details["_values"] = context.values
-
-    return final_status, "; ".join(messages), total_elapsed_ms, all_details
 
 
 def run_monitor_check(monitor_id: str) -> None:
@@ -118,7 +45,7 @@ def run_monitor_check(monitor_id: str) -> None:
     logger.info("Running scheduled check", monitor_id=monitor_id, name=monitor.name)
 
     try:
-        final_status, message, total_elapsed_ms, all_details = _run_pipeline(monitor.url, monitor.pipeline)
+        final_status, message, total_elapsed_ms, all_details = run_pipeline(monitor.url, monitor.pipeline)
         now = datetime.now(timezone.utc)
 
         record = CheckResultRecord(

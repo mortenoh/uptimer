@@ -78,7 +78,7 @@ class Dhis2VersionStage(Stage):
         min_version: str = "2.38.0",
         timeout: float = 30.0,
     ) -> None:
-        """Initialize version checker.
+        """Initialize version stage.
 
         Args:
             username: DHIS2 username
@@ -168,7 +168,7 @@ class Dhis2IntegrityStage(Stage):
         password: str = "district",
         timeout: float = 60.0,
     ) -> None:
-        """Initialize integrity checker.
+        """Initialize integrity stage.
 
         Args:
             username: DHIS2 username
@@ -253,7 +253,7 @@ class Dhis2JobStage(Stage):
         job_type: str | None = None,
         timeout: float = 30.0,
     ) -> None:
-        """Initialize job checker.
+        """Initialize job stage.
 
         Args:
             username: DHIS2 username
@@ -351,7 +351,7 @@ class Dhis2AnalyticsStage(Stage):
         max_age_hours: int = 24,
         timeout: float = 30.0,
     ) -> None:
-        """Initialize analytics checker.
+        """Initialize analytics stage.
 
         Args:
             username: DHIS2 username

@@ -29,16 +29,30 @@
 - `src/uptimer/` - Main package
   - `cli.py` - Typer CLI entry point
   - `main.py` - Entry point for `uptimer` command
-  - `settings.py` - Pydantic settings from env
+  - `settings.py` - Pydantic settings from env/YAML
   - `logging.py` - Structlog configuration
+  - `schemas.py` - Pydantic models for Monitor, Stage, CheckResult
+  - `storage.py` - MongoDB storage layer
+  - `pipeline.py` - Shared pipeline execution utilities
+  - `scheduler.py` - APScheduler background job scheduler
   - `stages/` - Pluggable stage system
-    - `base.py` - Stage base class, CheckResult, Status enum
-    - `http.py` - Default HTTP stage
-    - `dhis2.py` - DHIS2 stage with auth
-    - `registry.py` - Stage registration
+    - `base.py` - Stage base class, CheckResult, Status enum, CheckContext
+    - `registry.py` - Stage registration with @register_stage decorator
+    - `http.py` - HTTP stage with redirect following
+    - `dhis2.py` - DHIS2 instance check with auth
+    - `dhis2_checks.py` - DHIS2-specific stages (version, integrity, job, analytics)
+    - `ssl.py`, `dns.py`, `tcp.py` - Infrastructure stages
+    - `jq.py`, `jsonpath.py`, `regex.py` - Value extraction stages
+    - `threshold.py`, `contains.py`, `age.py` - Validation stages
   - `web/` - FastAPI web UI
-    - `app.py` - App factory
-    - `routes.py` - Web routes and API
+    - `app.py` - App factory with CORS, session middleware
+    - `routes.py` - Web routes (login, health endpoint)
+    - `api/` - REST API routes
+      - `monitors.py` - Monitor CRUD and check endpoints
+      - `stages.py` - Stage metadata endpoint
+      - `deps.py` - Dependency injection (storage, auth)
+- `clients/web/` - Next.js frontend
+- `scripts/` - Utility scripts (seed_data.py)
 
 ## Adding new stages
 

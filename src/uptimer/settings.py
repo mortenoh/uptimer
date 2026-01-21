@@ -13,7 +13,7 @@ class MonitorConfig(BaseModel):
     """Configuration for a single monitor."""
 
     url: str
-    checker: str = "http"
+    stage_type: str = "http"
     username: str | None = None
     password: str | None = None
     interval: int = 60  # seconds
@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # Server
     host: str = "127.0.0.1"
     port: int = 8000
+
+    # CORS (comma-separated list of allowed origins, or "*" for all)
+    cors_origins: str = "http://localhost:3000,http://localhost:3001"
+
+    # Session
+    session_max_age: int = 86400  # Session duration in seconds (default 24 hours)
 
     # CLI client
     api_url: str = "http://localhost:8000"

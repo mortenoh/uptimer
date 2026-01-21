@@ -22,6 +22,7 @@ services:
       - UPTIMER_MONGODB_DB=uptimer
       - UPTIMER_HOST=0.0.0.0
       - UPTIMER_PORT=8000
+      - UPTIMER_CORS_ORIGINS=http://localhost:3000
     depends_on:
       mongo:
         condition: service_healthy

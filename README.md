@@ -267,12 +267,24 @@ Environment variables:
 |----------|---------|-------------|
 | `UPTIMER_USERNAME` | admin | API username |
 | `UPTIMER_PASSWORD` | admin | API password |
-| `UPTIMER_SECRET_KEY` | change-me | Session secret |
+| `UPTIMER_SECRET_KEY` | change-me-in-production | Session secret |
 | `UPTIMER_HOST` | 127.0.0.1 | Server host |
 | `UPTIMER_PORT` | 8000 | Server port |
+| `UPTIMER_CORS_ORIGINS` | http://localhost:3000,http://localhost:3001 | CORS allowed origins (comma-separated, or "*" for all) |
+| `UPTIMER_SESSION_MAX_AGE` | 86400 | Session duration in seconds |
 | `UPTIMER_MONGODB_URI` | mongodb://localhost:27017 | MongoDB URI |
 | `UPTIMER_MONGODB_DB` | uptimer | Database name |
 | `UPTIMER_RESULTS_RETENTION` | 10000000 | Max results per monitor |
+| `UPTIMER_API_URL` | http://localhost:8000 | API URL for CLI client |
+
+### Health Check Endpoint
+
+The API exposes a `/health` endpoint for container health checks:
+
+```bash
+curl http://localhost:8000/health
+# Returns: {"status": "healthy"}
+```
 
 ## Development
 

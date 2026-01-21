@@ -323,7 +323,7 @@ class TestRunCheck:
         mock_checker = MagicMock()
         mock_checker.check.return_value = mock_result
 
-        with patch("uptimer.web.api.monitors.get_stage") as mock_get:
+        with patch("uptimer.pipeline.get_stage") as mock_get:
             mock_get.return_value = lambda: mock_checker
             response = auth_client.post(f"/api/monitors/{monitor_id}/check")
 
@@ -381,7 +381,7 @@ class TestGetResults:
         mock_checker = MagicMock()
         mock_checker.check.return_value = mock_result
 
-        with patch("uptimer.web.api.monitors.get_stage") as mock_get:
+        with patch("uptimer.pipeline.get_stage") as mock_get:
             mock_get.return_value = lambda: mock_checker
             for _ in range(5):
                 auth_client.post(f"/api/monitors/{monitor_id}/check")

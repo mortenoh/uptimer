@@ -41,9 +41,12 @@ def create_app() -> FastAPI:
     )
 
     # CORS middleware for frontend access
+    cors_origins = (
+        ["*"] if settings.cors_origins == "*" else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:3001"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -54,7 +57,7 @@ def create_app() -> FastAPI:
         SessionMiddleware,
         secret_key=settings.secret_key,
         session_cookie="uptimer_session",
-        max_age=86400,  # 24 hours
+        max_age=settings.session_max_age,
     )
 
     # Mount static files if directory exists
