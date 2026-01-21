@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from uptimer.scheduler import refresh_monitor_schedule, remove_monitor_schedule
 from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate, Stage
 from uptimer.stages import CheckContext, get_stage
 from uptimer.storage import Storage
@@ -181,7 +182,9 @@ async def create_monitor(
 ) -> Monitor:
     """Create a new monitor."""
     try:
-        return storage.create_monitor(data)
+        monitor = storage.create_monitor(data)
+        refresh_monitor_schedule(monitor, storage)
+        return monitor
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -226,6 +229,8 @@ async def update_monitor(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Monitor not found",
         )
+
+    refresh_monitor_schedule(monitor, storage)
     return monitor
 
 
@@ -242,6 +247,8 @@ async def delete_monitor(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Monitor not found",
         )
+
+    remove_monitor_schedule(monitor_id)
 
 
 @router.post("/{monitor_id}/check", response_model=CheckResultRecord)

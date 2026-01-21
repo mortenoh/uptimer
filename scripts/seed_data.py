@@ -12,6 +12,14 @@ from uptimer.storage import Storage
 
 # Common websites to monitor - all publicly accessible and introspectable
 SEED_MONITORS = [
+    # Local test service - use for testing scheduler with up/down cycles
+    MonitorCreate(
+        name="Local Test Service",
+        url="http://localhost:8081",
+        pipeline=[Stage(type="http")],
+        interval=10,
+        tags=["local", "test"],
+    ),
     MonitorCreate(
         name="Google",
         url="https://www.google.com",

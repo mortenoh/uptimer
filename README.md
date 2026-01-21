@@ -184,7 +184,7 @@ curl -X POST http://localhost:8000/api/monitors \
 
 ## Scheduling
 
-Monitors support two scheduling modes:
+Uptimer includes a **built-in scheduler** that automatically runs checks based on monitor configuration. The scheduler uses APScheduler with MongoDB as the job store for persistence across restarts.
 
 ### Interval-based (default)
 ```json
@@ -192,7 +192,7 @@ Monitors support two scheduling modes:
   "interval": 30
 }
 ```
-Checks run every N seconds (minimum 10).
+Checks run every N seconds (minimum 10). Default is 30 seconds.
 
 ### Cron-based
 ```json
@@ -213,7 +213,13 @@ Uses standard cron syntax: `minute hour day month weekday`
 | `0 9 * * 1-5` | Weekdays at 9am |
 | `0 0 * * 0` | Weekly on Sunday |
 
-Note: Schedule execution requires an external scheduler (cron, systemd timer, or orchestrator) to call the check endpoint at the specified times.
+### How it works
+
+1. When `uptimer serve` starts, the scheduler loads all enabled monitors
+2. Each monitor gets a job based on its `interval` or `schedule`
+3. Jobs persist in MongoDB (`scheduler_jobs` collection)
+4. When monitors are created/updated/deleted, schedules update automatically
+5. Disabled monitors (`enabled: false`) are not scheduled
 
 ## Configuration
 

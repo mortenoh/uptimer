@@ -74,17 +74,41 @@ When a monitor runs, it produces a **check result** with:
 │   CLI       │────▶│  REST API   │────▶│  MongoDB    │
 │  (client)   │     │  (FastAPI)  │     │  (storage)  │
 └─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │   React     │
-                    │  Frontend   │
-                    └─────────────┘
+                           │                   ▲
+                    ┌──────┴──────┐            │
+                    │   React     │      ┌─────┴─────┐
+                    │  Frontend   │      │ Scheduler │
+                    └─────────────┘      └───────────┘
 ```
 
 - **CLI**: Command-line client that talks to the API
 - **REST API**: Manages monitors, runs checks, stores results
-- **MongoDB**: Persists monitors and check history
+- **MongoDB**: Persists monitors, check history, and scheduler jobs
+- **Scheduler**: Background process that runs checks automatically
 - **React Frontend**: Visual dashboard at `http://localhost:3000`
+
+## Built-in Scheduler
+
+Uptimer includes a **built-in scheduler** that automatically runs checks. When you start the server with `uptimer serve`, the scheduler:
+
+1. Loads all enabled monitors from MongoDB
+2. Creates a job for each monitor based on its `interval` or `schedule`
+3. Runs checks in the background and stores results
+4. Updates automatically when monitors are created, updated, or deleted
+
+**Interval-based scheduling** (default):
+```json
+{"interval": 30}
+```
+Runs every 30 seconds.
+
+**Cron-based scheduling**:
+```json
+{"schedule": "*/5 * * * *"}
+```
+Runs every 5 minutes using cron syntax.
+
+The scheduler uses MongoDB to persist job state, so schedules survive server restarts.
 
 ## Your First Monitor
 
