@@ -100,7 +100,7 @@ uptimer add [OPTIONS] NAME URL
 
 **Options:**
 
-- `-c`, `--stage TYPE` - Checker type (can be repeated, default: `http`)
+- `-c`, `--stage TYPE` - Stage type (can be repeated, default: `http`)
 - `-t`, `--tag TAG` - Tag (can be repeated)
 - `-i`, `--interval SECONDS` - Check interval in seconds (default: 30)
 - `-s`, `--schedule CRON` - Cron schedule expression
