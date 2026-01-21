@@ -1,6 +1,14 @@
 # REST API
 
-All API endpoints require authentication via session cookie. First login via `POST /login`.
+All API endpoints require authentication. Two methods are supported:
+
+1. **Basic Auth** (recommended for CLI/scripts):
+   ```bash
+   curl -u admin:admin http://localhost:8000/api/monitors
+   ```
+
+2. **Session cookie** (for web UI):
+   Login via `POST /login` to get a session cookie.
 
 ## Monitors
 

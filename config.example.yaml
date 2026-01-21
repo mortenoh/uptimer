@@ -1,7 +1,7 @@
 # Uptimer Configuration
 # Copy to config.yaml and modify as needed
 
-# Authentication for web UI
+# Authentication (used by both server and CLI)
 username: admin
 password: admin
 secret_key: change-me-in-production
@@ -10,13 +10,9 @@ secret_key: change-me-in-production
 host: 127.0.0.1
 port: 8000
 
-# Monitors to check
-monitors:
-  - url: https://google.com
-    checker: http
+# CLI client settings
+api_url: http://localhost:8000
 
-  - url: https://play.dhis2.org/demo
-    checker: dhis2
-    username: admin
-    password: district
-    interval: 300  # 5 minutes
+# MongoDB storage
+mongodb_uri: mongodb://localhost:27017
+mongodb_db: uptimer

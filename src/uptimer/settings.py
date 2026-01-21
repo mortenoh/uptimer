@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
 
+    # CLI client
+    api_url: str = "http://localhost:8000"
+
     # Storage (MongoDB)
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_db: str = "uptimer"
