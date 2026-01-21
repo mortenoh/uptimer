@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { MonitorCreate } from "@/types/api";
+import { PipelineBuilder } from "@/components/pipeline-builder";
+import type { MonitorCreate, Stage } from "@/types/api";
 
 interface AddMonitorDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function AddMonitorDialog({ open, onClose, onAdd }: AddMonitorDialogProps
   const [interval, setInterval] = useState(30);
   const [schedule, setSchedule] = useState("");
   const [tags, setTags] = useState("");
+  const [pipeline, setPipeline] = useState<Stage[]>([{ type: "http" }]);
   const [useSchedule, setUseSchedule] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function AddMonitorDialog({ open, onClose, onAdd }: AddMonitorDialogProps
     setInterval(30);
     setSchedule("");
     setTags("");
+    setPipeline([{ type: "http" }]);
     setUseSchedule(false);
     setError(null);
   }
@@ -56,11 +59,17 @@ export function AddMonitorDialog({ open, onClose, onAdd }: AddMonitorDialogProps
       return;
     }
 
+    if (pipeline.length === 0) {
+      setError("At least one pipeline stage is required");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const data: MonitorCreate = {
         name: name.trim(),
         url: url.trim(),
+        pipeline,
         interval,
         tags: tags.split(",").map(t => t.trim()).filter(Boolean),
       };
@@ -81,7 +90,7 @@ export function AddMonitorDialog({ open, onClose, onAdd }: AddMonitorDialogProps
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) { reset(); onClose(); } }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Monitor</DialogTitle>
         </DialogHeader>
@@ -128,6 +137,9 @@ export function AddMonitorDialog({ open, onClose, onAdd }: AddMonitorDialogProps
               className="w-full px-3 py-2 rounded-md bg-muted/50 border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             />
           </div>
+
+          {/* Pipeline Builder */}
+          <PipelineBuilder pipeline={pipeline} onChange={setPipeline} />
 
           {/* Schedule Toggle */}
           <div className="flex items-center gap-2">

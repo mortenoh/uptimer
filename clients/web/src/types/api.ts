@@ -22,6 +22,26 @@ export interface Stage {
   expected_ip?: string;
   // JSON Schema
   schema?: Record<string, unknown>;
+  // HTTP headers
+  headers?: Record<string, string>;
+}
+
+export interface StageOption {
+  name: string;
+  label: string;
+  type: "string" | "number" | "boolean" | "object";
+  required?: boolean;
+  default?: unknown;
+  description?: string;
+  placeholder?: string;
+}
+
+export interface StageInfo {
+  type: string;
+  name: string;
+  description: string;
+  is_network_stage: boolean;
+  options: StageOption[];
 }
 
 export interface Monitor {

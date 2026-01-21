@@ -1,4 +1,4 @@
-import type { Monitor, MonitorCreate, MonitorUpdate, CheckResult } from "@/types/api";
+import type { Monitor, MonitorCreate, MonitorUpdate, CheckResult, StageInfo } from "@/types/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -125,6 +125,11 @@ export const api = {
   // Tags
   async listTags(): Promise<string[]> {
     return fetchApi<string[]>("/api/monitors/tags");
+  },
+
+  // Stages
+  async listStages(): Promise<StageInfo[]> {
+    return fetchApi<StageInfo[]>("/api/stages");
   },
 };
 

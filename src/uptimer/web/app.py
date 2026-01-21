@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from uptimer.scheduler import start_scheduler, stop_scheduler
 from uptimer.settings import get_settings
-from uptimer.web.api import monitors_router
+from uptimer.web.api import monitors_router, stages_router
 from uptimer.web.api.deps import get_storage
 from uptimer.web.routes import router
 
@@ -64,5 +64,6 @@ def create_app() -> FastAPI:
     # Include routes
     app.include_router(router)
     app.include_router(monitors_router)
+    app.include_router(stages_router)
 
     return app
