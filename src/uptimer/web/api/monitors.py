@@ -6,85 +6,89 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from uptimer.checkers import CheckContext, get_checker
-from uptimer.schemas import CheckConfig, CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
+from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate, Stage
+from uptimer.stages import CheckContext, get_stage
 from uptimer.storage import Storage
 from uptimer.web.api.deps import get_storage, require_auth
 
 router = APIRouter(prefix="/api/monitors", tags=["monitors"])
 
 
-def _instantiate_checker(check: CheckConfig) -> Any:
-    """Instantiate a checker with the appropriate options from CheckConfig."""
-    checker_class = get_checker(check.type)
+def _instantiate_stage(stage: Stage) -> Any:
+    """Instantiate a stage with the appropriate options from Stage config."""
+    stage_class = get_stage(stage.type)
 
-    # Build kwargs from CheckConfig options
+    # Build kwargs from Stage options
     kwargs: dict[str, Any] = {}
 
     # Auth options (for dhis2, etc.)
-    if check.username:
-        kwargs["username"] = check.username
-    if check.password:
-        kwargs["password"] = check.password
+    if stage.username:
+        kwargs["username"] = stage.username
+    if stage.password:
+        kwargs["password"] = stage.password
 
     # Value extractor options
-    if check.expr:
-        kwargs["expr"] = check.expr
-    if check.store_as:
-        kwargs["store_as"] = check.store_as
+    if stage.expr:
+        kwargs["expr"] = stage.expr
+    if stage.store_as:
+        kwargs["store_as"] = stage.store_as
 
     # Threshold options
-    if check.min is not None:
-        kwargs["min_value"] = check.min
-    if check.max is not None:
-        kwargs["max_value"] = check.max
-    if check.value:
-        kwargs["value_ref"] = check.value
+    if stage.min is not None:
+        kwargs["min_value"] = stage.min
+    if stage.max is not None:
+        kwargs["max_value"] = stage.max
+    if stage.value:
+        kwargs["value_ref"] = stage.value
 
     # Pattern/contains options
-    if check.pattern:
-        kwargs["pattern"] = check.pattern
-    if check.negate:
-        kwargs["negate"] = check.negate
+    if stage.pattern:
+        kwargs["pattern"] = stage.pattern
+    if stage.negate:
+        kwargs["negate"] = stage.negate
 
     # Age checker options
-    if check.max_age is not None:
-        kwargs["max_age"] = check.max_age
+    if stage.max_age is not None:
+        kwargs["max_age"] = stage.max_age
 
     # SSL options
-    if check.warn_days:
-        kwargs["warn_days"] = check.warn_days
+    if stage.warn_days:
+        kwargs["warn_days"] = stage.warn_days
 
     # TCP options
-    if check.port is not None:
-        kwargs["port"] = check.port
+    if stage.port is not None:
+        kwargs["port"] = stage.port
 
     # DNS options
-    if check.expected_ip:
-        kwargs["expected_ip"] = check.expected_ip
+    if stage.expected_ip:
+        kwargs["expected_ip"] = stage.expected_ip
 
     # JSON schema options
-    if check.schema_:
-        kwargs["schema"] = check.schema_
+    if stage.schema_:
+        kwargs["schema"] = stage.schema_
+
+    # HTTP headers
+    if stage.headers:
+        kwargs["headers"] = stage.headers
 
     # Try to instantiate with kwargs, fall back to no-args
     try:
-        return checker_class(**kwargs)
+        return stage_class(**kwargs)
     except TypeError:
-        return checker_class()
+        return stage_class()
 
 
-def _run_checks(url: str, checks: list[CheckConfig]) -> tuple[str, str, float, dict[str, object]]:
-    """Run all checks for a monitor and return aggregated results.
+def _run_pipeline(url: str, pipeline: list[Stage]) -> tuple[str, str, float, dict[str, object]]:
+    """Run all pipeline stages for a monitor and return aggregated results.
 
     Args:
         url: URL to check
-        checks: List of check configurations
+        pipeline: List of pipeline stage configurations
 
     Returns:
         Tuple of (final_status, message, total_elapsed_ms, all_details)
     """
-    # Create shared context for the check chain
+    # Create shared context for the pipeline
     context = CheckContext(url=url)
 
     all_details: dict[str, object] = {}
@@ -92,16 +96,16 @@ def _run_checks(url: str, checks: list[CheckConfig]) -> tuple[str, str, float, d
     final_status = "up"
     messages: list[str] = []
 
-    for i, check in enumerate(checks):
-        checker = _instantiate_checker(check)
+    for i, stage in enumerate(pipeline):
+        checker = _instantiate_stage(stage)
         result = checker.check(url, verbose=False, context=context)
 
         total_elapsed_ms += result.elapsed_ms
-        messages.append(f"{check.type}: {result.message}")
+        messages.append(f"{stage.type}: {result.message}")
 
-        # Store check details with index to handle multiple checks of same type
-        check_key = f"{check.type}" if checks.count(check) == 1 else f"{check.type}_{i}"
-        all_details[check_key] = result.details
+        # Store stage details with index to handle multiple stages of same type
+        stage_key = f"{stage.type}" if pipeline.count(stage) == 1 else f"{stage.type}_{i}"
+        all_details[stage_key] = result.details
 
         # Use worst status (down > degraded > up)
         if result.status.value == "down":
@@ -149,7 +153,7 @@ async def check_all_monitors(
         if not monitor.enabled:
             continue
 
-        final_status, message, total_elapsed_ms, all_details = _run_checks(monitor.url, monitor.checks)
+        final_status, message, total_elapsed_ms, all_details = _run_pipeline(monitor.url, monitor.pipeline)
         now = datetime.now(timezone.utc)
 
         record = CheckResultRecord(
@@ -254,7 +258,7 @@ async def run_check(
             detail="Monitor not found",
         )
 
-    final_status, message, total_elapsed_ms, all_details = _run_checks(monitor.url, monitor.checks)
+    final_status, message, total_elapsed_ms, all_details = _run_pipeline(monitor.url, monitor.pipeline)
     now = datetime.now(timezone.utc)
 
     # Create result record

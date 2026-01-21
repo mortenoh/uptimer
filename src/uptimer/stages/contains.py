@@ -1,21 +1,21 @@
-"""Contains checker - validates response contains/excludes text or pattern."""
+"""Contains stage - validates response contains/excludes text or pattern."""
 
 import re
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
-@register_checker
-class ContainsChecker(Checker):
+@register_stage
+class ContainsStage(Stage):
     """Check if response body contains or excludes a pattern."""
 
     name = "contains"
     description = "Check if response contains/excludes text or pattern"
-    is_network_checker = False
+    is_network_stage = False
 
     def __init__(self, pattern: str = "", negate: bool = False) -> None:
-        """Initialize contains checker.
+        """Initialize contains stage.
 
         Args:
             pattern: Text or regex pattern to search for

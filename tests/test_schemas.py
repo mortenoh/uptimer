@@ -5,25 +5,39 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from uptimer.schemas import CheckConfig, CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
+from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate, Stage
 
 
-class TestCheckConfig:
-    """Tests for CheckConfig schema."""
+class TestStage:
+    """Tests for Stage schema."""
 
-    def test_http_check(self) -> None:
-        """Test creating HTTP check config."""
-        check = CheckConfig(type="http")
-        assert check.type == "http"
-        assert check.username is None
-        assert check.password is None
+    def test_http_stage(self) -> None:
+        """Test creating HTTP stage config."""
+        stage = Stage(type="http")
+        assert stage.type == "http"
+        assert stage.username is None
+        assert stage.password is None
 
-    def test_dhis2_check_with_credentials(self) -> None:
-        """Test creating DHIS2 check config with credentials."""
-        check = CheckConfig(type="dhis2", username="admin", password="district")
-        assert check.type == "dhis2"
-        assert check.username == "admin"
-        assert check.password == "district"
+    def test_dhis2_stage_with_credentials(self) -> None:
+        """Test creating DHIS2 stage config with credentials."""
+        stage = Stage(type="dhis2", username="admin", password="district")
+        assert stage.type == "dhis2"
+        assert stage.username == "admin"
+        assert stage.password == "district"
+
+    def test_http_stage_with_headers(self) -> None:
+        """Test creating HTTP stage config with custom headers."""
+        stage = Stage(
+            type="http",
+            headers={"Authorization": "Bearer token", "X-Custom": "value"},
+        )
+        assert stage.type == "http"
+        assert stage.headers == {"Authorization": "Bearer token", "X-Custom": "value"}
+
+    def test_http_stage_headers_default_none(self) -> None:
+        """Test that headers default to None."""
+        stage = Stage(type="http")
+        assert stage.headers is None
 
 
 class TestMonitorCreate:
@@ -34,8 +48,8 @@ class TestMonitorCreate:
         data = MonitorCreate(name="Test", url="https://example.com")
         assert data.name == "Test"
         assert data.url == "https://example.com"
-        assert len(data.checks) == 1
-        assert data.checks[0].type == "http"
+        assert len(data.pipeline) == 1
+        assert data.pipeline[0].type == "http"
         assert data.interval == 30
         assert data.enabled is True
 
@@ -44,29 +58,29 @@ class TestMonitorCreate:
         data = MonitorCreate(
             name="Test Monitor",
             url="https://api.example.com",
-            checks=[CheckConfig(type="dhis2", username="admin", password="secret")],
+            pipeline=[Stage(type="dhis2", username="admin", password="secret")],
             interval=120,
             enabled=False,
         )
         assert data.name == "Test Monitor"
-        assert data.checks[0].type == "dhis2"
-        assert data.checks[0].username == "admin"
+        assert data.pipeline[0].type == "dhis2"
+        assert data.pipeline[0].username == "admin"
         assert data.interval == 120
         assert data.enabled is False
 
-    def test_multiple_checks(self) -> None:
-        """Test creating monitor with multiple checks."""
+    def test_multiple_stages(self) -> None:
+        """Test creating monitor with multiple pipeline stages."""
         data = MonitorCreate(
             name="Multi",
             url="https://example.com",
-            checks=[
-                CheckConfig(type="http"),
-                CheckConfig(type="dhis2", username="admin", password="pass"),
+            pipeline=[
+                Stage(type="http"),
+                Stage(type="dhis2", username="admin", password="pass"),
             ],
         )
-        assert len(data.checks) == 2
-        assert data.checks[0].type == "http"
-        assert data.checks[1].type == "dhis2"
+        assert len(data.pipeline) == 2
+        assert data.pipeline[0].type == "http"
+        assert data.pipeline[1].type == "dhis2"
 
     def test_name_validation_empty(self) -> None:
         """Test empty name is rejected."""
@@ -93,6 +107,42 @@ class TestMonitorCreate:
         with pytest.raises(ValidationError):
             MonitorCreate(name="Test", url="https://example.com", interval=5)
 
+    def test_valid_cron_schedule(self) -> None:
+        """Test valid cron expression is accepted."""
+        data = MonitorCreate(name="Test", url="https://example.com", schedule="*/5 * * * *")
+        assert data.schedule == "*/5 * * * *"
+
+    def test_cron_schedule_every_hour(self) -> None:
+        """Test hourly cron expression."""
+        data = MonitorCreate(name="Test", url="https://example.com", schedule="0 * * * *")
+        assert data.schedule == "0 * * * *"
+
+    def test_cron_schedule_daily(self) -> None:
+        """Test daily cron expression."""
+        data = MonitorCreate(name="Test", url="https://example.com", schedule="0 9 * * *")
+        assert data.schedule == "0 9 * * *"
+
+    def test_cron_schedule_weekdays(self) -> None:
+        """Test weekday cron expression."""
+        data = MonitorCreate(name="Test", url="https://example.com", schedule="0 9 * * 1-5")
+        assert data.schedule == "0 9 * * 1-5"
+
+    def test_invalid_cron_schedule(self) -> None:
+        """Test invalid cron expression is rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            MonitorCreate(name="Test", url="https://example.com", schedule="invalid")
+        assert "Invalid cron expression" in str(exc_info.value)
+
+    def test_invalid_cron_too_few_fields(self) -> None:
+        """Test cron with too few fields is rejected."""
+        with pytest.raises(ValidationError):
+            MonitorCreate(name="Test", url="https://example.com", schedule="* * *")
+
+    def test_schedule_none_allowed(self) -> None:
+        """Test schedule can be None."""
+        data = MonitorCreate(name="Test", url="https://example.com", schedule=None)
+        assert data.schedule is None
+
 
 class TestMonitorUpdate:
     """Tests for MonitorUpdate schema."""
@@ -102,7 +152,7 @@ class TestMonitorUpdate:
         data = MonitorUpdate()
         assert data.name is None
         assert data.url is None
-        assert data.checks is None
+        assert data.pipeline is None
 
     def test_partial_update(self) -> None:
         """Test partial update."""
@@ -112,12 +162,12 @@ class TestMonitorUpdate:
         assert data.url is None
         assert data.enabled is None
 
-    def test_update_checks(self) -> None:
-        """Test updating checks."""
-        data = MonitorUpdate(checks=[CheckConfig(type="dhis2", username="u", password="p")])
-        assert data.checks is not None
-        assert len(data.checks) == 1
-        assert data.checks[0].type == "dhis2"
+    def test_update_pipeline(self) -> None:
+        """Test updating pipeline."""
+        data = MonitorUpdate(pipeline=[Stage(type="dhis2", username="u", password="p")])
+        assert data.pipeline is not None
+        assert len(data.pipeline) == 1
+        assert data.pipeline[0].type == "dhis2"
 
     def test_name_validation_empty(self) -> None:
         """Test empty name in update is rejected."""
@@ -128,6 +178,16 @@ class TestMonitorUpdate:
         """Test interval below 10 in update is rejected."""
         with pytest.raises(ValidationError):
             MonitorUpdate(interval=5)
+
+    def test_update_schedule(self) -> None:
+        """Test updating schedule with valid cron."""
+        data = MonitorUpdate(schedule="0 */2 * * *")
+        assert data.schedule == "0 */2 * * *"
+
+    def test_update_invalid_schedule(self) -> None:
+        """Test updating schedule with invalid cron is rejected."""
+        with pytest.raises(ValidationError):
+            MonitorUpdate(schedule="not-a-cron")
 
 
 class TestMonitor:
@@ -140,7 +200,7 @@ class TestMonitor:
             id="test-id",
             name="Test",
             url="https://example.com",
-            checks=[CheckConfig(type="http")],
+            pipeline=[Stage(type="http")],
             interval=60,
             enabled=True,
             created_at=now,
@@ -151,7 +211,7 @@ class TestMonitor:
         assert monitor.id == "test-id"
         assert monitor.name == "Test"
         assert monitor.created_at == now
-        assert monitor.checks[0].type == "http"
+        assert monitor.pipeline[0].type == "http"
 
 
 class TestCheckResultRecord:

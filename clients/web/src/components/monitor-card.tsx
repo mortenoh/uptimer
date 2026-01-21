@@ -102,11 +102,11 @@ export function MonitorCard({ monitor, onRunCheck, onDelete, onToggle, onViewLog
           {monitor.url}
         </a>
 
-        {/* Tags & Checks Row */}
+        {/* Tags & Pipeline Row */}
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {monitor.checks.map((check, i) => (
+          {monitor.pipeline.map((stage, i) => (
             <Badge key={i} variant="secondary" className="text-[10px] font-mono px-1.5 py-0">
-              {check.type}
+              {stage.type}
             </Badge>
           ))}
           {monitor.tags.slice(0, 3).map((tag) => (
@@ -124,7 +124,7 @@ export function MonitorCard({ monitor, onRunCheck, onDelete, onToggle, onViewLog
         {/* Stats Row */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Last: {formatTime(monitor.last_check)}</span>
-          <span>Every {monitor.interval}s</span>
+          <span>{monitor.schedule ? `Cron: ${monitor.schedule}` : `Every ${monitor.interval}s`}</span>
         </div>
 
         {/* Last Result */}
@@ -150,14 +150,19 @@ export function MonitorCard({ monitor, onRunCheck, onDelete, onToggle, onViewLog
                 <span className="text-foreground">{lastResult.elapsed_ms.toFixed(0)}ms</span>
               </div>
               {lastResult.details && Object.entries(lastResult.details).map(([key, value]) => {
-                // Handle nested objects (like http checker details)
-                if (typeof value === "object" && value !== null) {
-                  return Object.entries(value as Record<string, unknown>).map(([k, v]) => (
-                    <div key={`${key}-${k}`} className="flex justify-between">
-                      <span className="capitalize">{k.replace(/_/g, " ")}:</span>
-                      <span className="text-foreground truncate ml-2 max-w-[150px]">{String(v)}</span>
+                // Skip arrays (like redirects) - too complex for inline display
+                if (Array.isArray(value)) {
+                  if (value.length === 0) return null;
+                  return (
+                    <div key={key} className="flex justify-between">
+                      <span className="capitalize">{key.replace(/_/g, " ")}:</span>
+                      <span className="text-foreground">{value.length} hop{value.length > 1 ? "s" : ""}</span>
                     </div>
-                  ));
+                  );
+                }
+                // Skip nested objects
+                if (typeof value === "object" && value !== null) {
+                  return null;
                 }
                 return (
                   <div key={key} className="flex justify-between">

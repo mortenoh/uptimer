@@ -5,9 +5,9 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from uptimer.checkers import get_checker
-from uptimer.schemas import CheckConfig, CheckResultRecord, MonitorCreate
+from uptimer.schemas import CheckResultRecord, MonitorCreate, Stage
 from uptimer.settings import get_settings
+from uptimer.stages import get_stage
 from uptimer.storage import Storage
 
 # Common websites to monitor - all publicly accessible and introspectable
@@ -15,70 +15,70 @@ SEED_MONITORS = [
     MonitorCreate(
         name="Google",
         url="https://www.google.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["search", "google", "public"],
     ),
     MonitorCreate(
         name="GitHub",
         url="https://github.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["developer", "git", "public"],
     ),
     MonitorCreate(
         name="Cloudflare",
         url="https://www.cloudflare.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["infrastructure", "cdn", "public"],
     ),
     MonitorCreate(
         name="Amazon",
         url="https://www.amazon.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["ecommerce", "aws", "public"],
     ),
     MonitorCreate(
         name="Wikipedia",
         url="https://www.wikipedia.org",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["knowledge", "public"],
     ),
     MonitorCreate(
         name="Reddit",
         url="https://www.reddit.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["social", "public"],
     ),
     MonitorCreate(
         name="Stack Overflow",
         url="https://stackoverflow.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["developer", "public"],
     ),
     MonitorCreate(
         name="OpenAI",
         url="https://www.openai.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["ai", "public"],
     ),
     MonitorCreate(
         name="Anthropic",
         url="https://www.anthropic.com",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["ai", "public"],
     ),
     MonitorCreate(
         name="httpbin (test)",
         url="https://httpbin.org/get",
-        checks=[CheckConfig(type="http")],
+        pipeline=[Stage(type="http")],
         interval=30,
         tags=["test", "api", "public"],
     ),
@@ -86,43 +86,43 @@ SEED_MONITORS = [
     MonitorCreate(
         name="DHIS2 Demo",
         url="https://play.dhis2.org/demo",
-        checks=[CheckConfig(type="dhis2", username="admin", password="district")],
+        pipeline=[Stage(type="dhis2", username="admin", password="district")],
         interval=30,
         tags=["dhis2", "demo", "health"],
     ),
     MonitorCreate(
         name="DHIS2 Dev",
         url="https://play.dhis2.org/dev",
-        checks=[CheckConfig(type="dhis2", username="admin", password="district")],
+        pipeline=[Stage(type="dhis2", username="admin", password="district")],
         interval=30,
         tags=["dhis2", "dev", "health"],
     ),
 ]
 
 
-def run_checks(storage: Storage, monitor_id: str, url: str, checks: list[CheckConfig]) -> str:
-    """Run all checks for a monitor and store the result."""
+def run_pipeline(storage: Storage, monitor_id: str, url: str, pipeline: list[Stage]) -> str:
+    """Run all pipeline stages for a monitor and store the result."""
     all_details: dict[str, object] = {}
     total_elapsed_ms = 0.0
     final_status = "up"
     messages: list[str] = []
 
-    for check in checks:
-        checker_class = get_checker(check.type)
+    for stage in pipeline:
+        stage_class = get_stage(stage.type)
 
-        # Instantiate checker with credentials if needed
-        if check.username and check.password:
+        # Instantiate stage with credentials if needed
+        if stage.username and stage.password:
             try:
-                checker = checker_class(username=check.username, password=check.password)  # type: ignore[call-arg]
+                stage_instance = stage_class(username=stage.username, password=stage.password)  # type: ignore[call-arg]
             except TypeError:
-                checker = checker_class()
+                stage_instance = stage_class()
         else:
-            checker = checker_class()
+            stage_instance = stage_class()
 
-        result = checker.check(url, verbose=False)
+        result = stage_instance.check(url, verbose=False)
         total_elapsed_ms += result.elapsed_ms
-        messages.append(f"{check.type}: {result.message}")
-        all_details[check.type] = result.details
+        messages.append(f"{stage.type}: {result.message}")
+        all_details[stage.type] = result.details
 
         # Use worst status (down > degraded > up)
         if result.status.value == "down":
@@ -178,13 +178,13 @@ def main() -> None:
         tags_str = ", ".join(monitor.tags) if monitor.tags else "none"
         print(f"Created: {monitor.name} [{tags_str}]", end=" ... ")
 
-        # Run initial checks
+        # Run initial pipeline
         try:
-            status = run_checks(
+            status = run_pipeline(
                 storage,
                 monitor.id,
                 monitor.url,
-                monitor.checks,
+                monitor.pipeline,
             )
             print(f"[{status}]")
         except Exception as e:

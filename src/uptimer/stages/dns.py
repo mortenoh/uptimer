@@ -1,23 +1,23 @@
-"""DNS checker - validates DNS resolution."""
+"""DNS stage - validates DNS resolution."""
 
 import socket
 import time
 from urllib.parse import urlparse
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
-@register_checker
-class DnsChecker(Checker):
+@register_stage
+class DnsStage(Stage):
     """Check DNS resolution for a hostname."""
 
     name = "dns"
     description = "Check DNS resolution"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(self, expected_ip: str | None = None) -> None:
-        """Initialize DNS checker.
+        """Initialize DNS stage.
 
         Args:
             expected_ip: Expected IP address (optional validation)

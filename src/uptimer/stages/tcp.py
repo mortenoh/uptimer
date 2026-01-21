@@ -1,23 +1,23 @@
-"""TCP checker - checks if a port is open and responding."""
+"""TCP stage - checks if a port is open and responding."""
 
 import socket
 import time
 from urllib.parse import urlparse
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
-@register_checker
-class TcpChecker(Checker):
+@register_stage
+class TcpStage(Stage):
     """Check if a TCP port is open and responding."""
 
     name = "tcp"
     description = "Check TCP port connectivity"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(self, port: int | None = None, timeout: float = 10.0) -> None:
-        """Initialize TCP checker.
+        """Initialize TCP stage.
 
         Args:
             port: Port to check (defaults to 80 or 443 based on URL scheme)

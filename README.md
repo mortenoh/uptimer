@@ -7,7 +7,7 @@ Service uptime monitoring with a modern React dashboard.
 - REST API for monitor management
 - Modern React + shadcn/ui dashboard with dark theme
 - MongoDB storage for monitors and results
-- Pluggable checker system with 15+ check types
+- Pluggable stage system with 15+ check types
 - Value extractors and transformers (jq, regex, jsonpath)
 - Threshold assertions and content validation
 - SSL certificate monitoring
@@ -48,21 +48,21 @@ npm install
 npm run dev
 ```
 
-## Available Checkers
+## Available Stages
 
 ### Network Checks
 
-| Checker | Description | Options |
-|---------|-------------|---------|
-| `http` | HTTP request with redirect following | `timeout` |
+| Stage | Description | Options |
+|-------|-------------|---------|
+| `http` | HTTP request with redirect following | `timeout`, `headers` |
 | `ssl` | SSL certificate validity check | `warn_days` (default: 30) |
 | `tcp` | TCP port connectivity | `port` |
 | `dns` | DNS resolution check | `expected_ip` |
 
 ### Value Extractors
 
-| Checker | Description | Options |
-|---------|-------------|---------|
+| Stage | Description | Options |
+|-------|-------------|---------|
 | `jq` | Extract from JSON using jq syntax | `expr`, `store_as` |
 | `jsonpath` | Extract using JSONPath syntax | `expr`, `store_as` |
 | `regex` | Extract using regex capture groups | `pattern`, `store_as` |
@@ -70,8 +70,8 @@ npm run dev
 
 ### Assertions
 
-| Checker | Description | Options |
-|---------|-------------|---------|
+| Stage | Description | Options |
+|-------|-------------|---------|
 | `threshold` | Assert value within bounds | `value`, `min`, `max` |
 | `contains` | Check response contains text | `pattern`, `negate` |
 | `age` | Validate timestamp freshness | `value`, `max_age` |
@@ -79,8 +79,8 @@ npm run dev
 
 ### DHIS2 Checks
 
-| Checker | Description | Options |
-|---------|-------------|---------|
+| Stage | Description | Options |
+|-------|-------------|---------|
 | `dhis2` | DHIS2 system info check | `username`, `password` |
 | `dhis2-version` | Version requirement check | `username`, `password`, `min_version` |
 | `dhis2-integrity` | Data integrity checks | `username`, `password` |
@@ -98,7 +98,7 @@ curl -X POST http://localhost:8000/api/monitors \
   -d '{
     "name": "Google",
     "url": "https://www.google.com",
-    "checks": [{"type": "http"}],
+    "pipeline": [{"type": "http"}],
     "interval": 30,
     "tags": ["search", "public"]
   }'
@@ -113,12 +113,28 @@ curl -X POST http://localhost:8000/api/monitors \
   -d '{
     "name": "API Health",
     "url": "https://api.example.com/health",
-    "checks": [
+    "pipeline": [
       {"type": "http"},
       {"type": "jq", "expr": ".status", "store_as": "status"},
       {"type": "threshold", "value": "$elapsed_ms", "max": 2000}
     ],
     "tags": ["api", "critical"]
+  }'
+```
+
+### Create monitor with custom headers
+
+```bash
+curl -X POST http://localhost:8000/api/monitors \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Protected API",
+    "url": "https://api.example.com/data",
+    "pipeline": [
+      {"type": "http", "headers": {"Authorization": "Bearer your-token", "X-API-Key": "key123"}}
+    ],
+    "tags": ["api", "protected"]
   }'
 ```
 
@@ -131,7 +147,7 @@ curl -X POST http://localhost:8000/api/monitors \
   -d '{
     "name": "DHIS2 Demo",
     "url": "https://play.dhis2.org/demo",
-    "checks": [
+    "pipeline": [
       {"type": "dhis2", "username": "admin", "password": "district"},
       {"type": "dhis2-version", "username": "admin", "password": "district", "min": "2.38.0"}
     ],
@@ -150,6 +166,54 @@ curl -X POST http://localhost:8000/api/monitors/{id}/check -u admin:admin
 ```bash
 curl http://localhost:8000/api/monitors?tag=critical -u admin:admin
 ```
+
+### Create monitor with cron schedule
+
+```bash
+curl -X POST http://localhost:8000/api/monitors \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Hourly Check",
+    "url": "https://api.example.com/health",
+    "pipeline": [{"type": "http"}],
+    "schedule": "0 * * * *",
+    "tags": ["scheduled"]
+  }'
+```
+
+## Scheduling
+
+Monitors support two scheduling modes:
+
+### Interval-based (default)
+```json
+{
+  "interval": 30
+}
+```
+Checks run every N seconds (minimum 10).
+
+### Cron-based
+```json
+{
+  "schedule": "*/5 * * * *"
+}
+```
+Uses standard cron syntax: `minute hour day month weekday`
+
+| Schedule | Description |
+|----------|-------------|
+| `* * * * *` | Every minute |
+| `*/5 * * * *` | Every 5 minutes |
+| `*/15 * * * *` | Every 15 minutes |
+| `0 * * * *` | Every hour |
+| `0 */6 * * *` | Every 6 hours |
+| `0 9 * * *` | Daily at 9am |
+| `0 9 * * 1-5` | Weekdays at 9am |
+| `0 0 * * 0` | Weekly on Sunday |
+
+Note: Schedule execution requires an external scheduler (cron, systemd timer, or orchestrator) to call the check endpoint at the specified times.
 
 ## Configuration
 
@@ -181,12 +245,13 @@ make clean      # Clean temp files
 
 ```
 src/uptimer/
-  checkers/           # Pluggable checker system
-    base.py           # Checker base class
-    http.py           # HTTP checker
-    ssl.py            # SSL certificate checker
-    tcp.py            # TCP port checker
-    dns.py            # DNS resolution checker
+  stages/             # Pluggable stage system
+    base.py           # Stage base class, CheckResult, CheckContext
+    registry.py       # Stage registration
+    http.py           # HTTP stage
+    ssl.py            # SSL certificate stage
+    tcp.py            # TCP port stage
+    dns.py            # DNS resolution stage
     jq.py             # jq expression extractor
     jsonpath.py       # JSONPath extractor
     regex.py          # Regex extractor
@@ -211,17 +276,17 @@ clients/web/          # React + Next.js frontend
     lib/              # API client
 ```
 
-## Adding a Custom Checker
+## Adding a Custom Stage
 
 ```python
-from uptimer.checkers.base import Checker, CheckResult, Status, CheckContext
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import Stage, CheckResult, Status, CheckContext
+from uptimer.stages.registry import register_stage
 
-@register_checker
-class MyChecker(Checker):
-    name = "my-checker"
-    description = "My custom checker"
-    is_network_checker = True  # Set False for transformers
+@register_stage
+class MyStage(Stage):
+    name = "my-stage"
+    description = "My custom stage"
+    is_network_stage = True  # Set False for transformers
 
     def __init__(self, custom_option: str = "default"):
         self.custom_option = custom_option
@@ -231,7 +296,7 @@ class MyChecker(Checker):
         if context and context.response_body:
             body = context.response_body
 
-        # Store values for subsequent checks
+        # Store values for subsequent stages
         if context:
             context.values["my_value"] = "extracted"
 

@@ -1,10 +1,10 @@
-"""Age checker - validates timestamp freshness."""
+"""Age stage - validates timestamp freshness."""
 
 from datetime import datetime, timezone
 from typing import Any
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
 def _parse_timestamp(value: Any) -> datetime | None:
@@ -47,20 +47,20 @@ def _parse_timestamp(value: Any) -> datetime | None:
     return None
 
 
-@register_checker
-class AgeChecker(Checker):
+@register_stage
+class AgeStage(Stage):
     """Check if a timestamp value is within acceptable age."""
 
     name = "age"
     description = "Validate timestamp freshness"
-    is_network_checker = False
+    is_network_stage = False
 
     def __init__(
         self,
         value_ref: str = "$server_time",
         max_age: int = 3600,
     ) -> None:
-        """Initialize age checker.
+        """Initialize age stage.
 
         Args:
             value_ref: Reference to timestamp value (e.g., "$last_updated")

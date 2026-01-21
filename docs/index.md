@@ -1,16 +1,18 @@
 # Uptimer
 
-Service uptime monitoring with pluggable checker system, REST API, and web dashboard.
+Service uptime monitoring with pluggable stage system, REST API, and React dashboard.
 
 ## Features
 
 - Monitor management via CLI and REST API
-- Multiple check types per monitor (HTTP, SSL, DHIS2, etc.)
-- Pluggable checker architecture
-- Web dashboard for monitoring status
+- Pipeline-based checks with 15+ stage types
+- Value extraction (jq, jsonpath, regex) and assertions
+- SSL certificate monitoring
+- React dashboard with dark theme
 - JSON output for automation
 - Tag-based organization
-- Check history and results
+
+**New to Uptimer?** Start with the [Introduction Guide](introduction.md).
 
 ## Quick Start
 
@@ -56,7 +58,7 @@ The CLI is a thin client that communicates with the backend via REST API. All mo
 | `uptimer check-all` | Run all checks |
 | `uptimer results ID` | View check history |
 | `uptimer tags` | List all tags |
-| `uptimer checkers` | List checker types |
+| `uptimer stages` | List available stages |
 | `uptimer serve` | Start the server |
 
 ## Status Codes

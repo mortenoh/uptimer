@@ -31,23 +31,22 @@
   - `main.py` - Entry point for `uptimer` command
   - `settings.py` - Pydantic settings from env
   - `logging.py` - Structlog configuration
-  - `checkers/` - Pluggable checker system
-    - `base.py` - Checker base class, CheckResult, Status enum
-    - `http.py` - Default HTTP checker
-    - `dhis2.py` - DHIS2 checker with auth
-    - `registry.py` - Checker registration
+  - `stages/` - Pluggable stage system
+    - `base.py` - Stage base class, CheckResult, Status enum
+    - `http.py` - Default HTTP stage
+    - `dhis2.py` - DHIS2 stage with auth
+    - `registry.py` - Stage registration
   - `web/` - FastAPI web UI
     - `app.py` - App factory
     - `routes.py` - Web routes and API
-    - `templates/` - Jinja2 templates
 
-## Adding new checkers
+## Adding new stages
 
-1. Create new file in `src/uptimer/checkers/`
-2. Subclass `Checker`, set `name` and `description`
+1. Create new file in `src/uptimer/stages/`
+2. Subclass `Stage`, set `name` and `description`
 3. Implement `check(url, verbose) -> CheckResult`
-4. Register via `@register_checker` decorator
-5. Add tests in `tests/test_checkers.py`
+4. Register via `@register_stage` decorator
+5. Add tests in `tests/test_stages.py`
 
 ## Makefile targets
 

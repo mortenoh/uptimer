@@ -105,8 +105,8 @@ class TestCreateMonitor:
         data = response.json()
         assert data["name"] == "Test"
         assert data["url"] == "https://example.com"
-        assert len(data["checks"]) == 1
-        assert data["checks"][0]["type"] == "http"
+        assert len(data["pipeline"]) == 1
+        assert data["pipeline"][0]["type"] == "http"
         assert data["interval"] == 30
         assert data["enabled"] is True
         assert "id" in data
@@ -119,7 +119,7 @@ class TestCreateMonitor:
             json={
                 "name": "Full Monitor",
                 "url": "https://api.example.com",
-                "checks": [{"type": "dhis2", "username": "user", "password": "pass"}],
+                "pipeline": [{"type": "dhis2", "username": "user", "password": "pass"}],
                 "interval": 120,
                 "enabled": False,
             },
@@ -127,7 +127,7 @@ class TestCreateMonitor:
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Full Monitor"
-        assert data["checks"][0]["type"] == "dhis2"
+        assert data["pipeline"][0]["type"] == "dhis2"
         assert data["interval"] == 120
         assert data["enabled"] is False
 
@@ -144,10 +144,10 @@ class TestCreateMonitor:
         """Test creating monitor with invalid checker."""
         response = auth_client.post(
             "/api/monitors",
-            json={"name": "Test", "url": "https://example.com", "checks": [{"type": "invalid"}]},
+            json={"name": "Test", "url": "https://example.com", "pipeline": [{"type": "invalid"}]},
         )
         assert response.status_code == 422
-        assert "Unknown checker" in response.json()["detail"]
+        assert "Unknown stage" in response.json()["detail"]
 
     def test_create_monitor_invalid_interval(self, auth_client: TestClient) -> None:
         """Test creating monitor with interval < 10."""
@@ -235,7 +235,7 @@ class TestUpdateMonitor:
 
         response = auth_client.put(
             f"/api/monitors/{monitor_id}",
-            json={"checks": [{"type": "invalid"}]},
+            json={"pipeline": [{"type": "invalid"}]},
         )
         assert response.status_code == 422
 
@@ -303,7 +303,7 @@ class TestRunCheck:
 
     def test_run_check_with_mock(self, auth_client: TestClient) -> None:
         """Test running a check with mocked checker."""
-        from uptimer.checkers.base import CheckResult, Status
+        from uptimer.stages.base import CheckResult, Status
 
         # Create monitor
         create_response = auth_client.post(
@@ -323,7 +323,7 @@ class TestRunCheck:
         mock_checker = MagicMock()
         mock_checker.check.return_value = mock_result
 
-        with patch("uptimer.web.api.monitors.get_checker") as mock_get:
+        with patch("uptimer.web.api.monitors.get_stage") as mock_get:
             mock_get.return_value = lambda: mock_checker
             response = auth_client.post(f"/api/monitors/{monitor_id}/check")
 
@@ -361,7 +361,7 @@ class TestGetResults:
 
     def test_get_results_with_limit(self, auth_client: TestClient) -> None:
         """Test getting results with limit parameter."""
-        from uptimer.checkers.base import CheckResult, Status
+        from uptimer.stages.base import CheckResult, Status
 
         # Create monitor
         create_response = auth_client.post(
@@ -370,7 +370,7 @@ class TestGetResults:
         )
         monitor_id = create_response.json()["id"]
 
-        # Run a few checks with mock
+        # Run a few pipeline with mock
         mock_result = CheckResult(
             status=Status.UP,
             url="https://example.com",
@@ -381,7 +381,7 @@ class TestGetResults:
         mock_checker = MagicMock()
         mock_checker.check.return_value = mock_result
 
-        with patch("uptimer.web.api.monitors.get_checker") as mock_get:
+        with patch("uptimer.web.api.monitors.get_stage") as mock_get:
             mock_get.return_value = lambda: mock_checker
             for _ in range(5):
                 auth_client.post(f"/api/monitors/{monitor_id}/check")

@@ -44,20 +44,20 @@ def test_help() -> None:
     assert "add" in result.output
     assert "check" in result.output
     assert "serve" in result.output
-    assert "checkers" in result.output
+    assert "stages" in result.output
 
 
-def test_checkers_list() -> None:
-    """Test checkers command lists available checkers."""
-    result = runner.invoke(app, ["checkers"])
+def test_stages_list() -> None:
+    """Test stages command lists available stages."""
+    result = runner.invoke(app, ["stages"])
     assert result.exit_code == 0
     assert "http" in result.output
     assert "dhis2" in result.output
 
 
-def test_checkers_list_json() -> None:
-    """Test checkers command with JSON output."""
-    result = runner.invoke(app, ["--json", "checkers"])
+def test_stages_list_json() -> None:
+    """Test stages command with JSON output."""
+    result = runner.invoke(app, ["--json", "stages"])
     assert result.exit_code == 0
     data: list[dict[str, str]] = json.loads(result.output)
     assert isinstance(data, list)
@@ -73,7 +73,7 @@ def test_list_monitors() -> None:
             "id": "abc123",
             "name": "Test Monitor",
             "url": "https://example.com",
-            "checks": [{"type": "http"}],
+            "pipeline": [{"type": "http"}],
             "interval": 30,
             "schedule": None,
             "enabled": True,
@@ -121,7 +121,7 @@ def test_list_monitors_json() -> None:
             "id": "abc123",
             "name": "Test Monitor",
             "url": "https://example.com",
-            "checks": [{"type": "http"}],
+            "pipeline": [{"type": "http"}],
             "interval": 30,
             "schedule": None,
             "enabled": True,
@@ -149,7 +149,7 @@ def test_get_monitor() -> None:
         "id": "abc123",
         "name": "Test Monitor",
         "url": "https://example.com",
-        "checks": [{"type": "http"}],
+        "pipeline": [{"type": "http"}],
         "interval": 30,
         "schedule": None,
         "enabled": True,
@@ -185,7 +185,7 @@ def test_add_monitor() -> None:
         "id": "new123",
         "name": "New Monitor",
         "url": "https://example.com",
-        "checks": [{"type": "http"}],
+        "pipeline": [{"type": "http"}],
         "interval": 30,
         "schedule": None,
         "enabled": True,
@@ -210,7 +210,7 @@ def test_add_monitor_with_options() -> None:
         "id": "new123",
         "name": "API Monitor",
         "url": "https://api.example.com",
-        "checks": [{"type": "http"}, {"type": "ssl"}],
+        "pipeline": [{"type": "http"}, {"type": "ssl"}],
         "interval": 60,
         "schedule": "*/5 * * * *",
         "enabled": True,
@@ -228,9 +228,9 @@ def test_add_monitor_with_options() -> None:
             "add",
             "API Monitor",
             "https://api.example.com",
-            "--check",
+            "--stage",
             "http",
-            "--check",
+            "--stage",
             "ssl",
             "--tag",
             "production",

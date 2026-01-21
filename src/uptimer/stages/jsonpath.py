@@ -1,11 +1,11 @@
-"""JSONPath checker - extracts values using JSONPath expressions."""
+"""JSONPath stage - extracts values using JSONPath expressions."""
 
 import json
 import re
 from typing import Any
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
 def _jsonpath_extract(data: Any, expr: str) -> list[Any]:
@@ -43,7 +43,6 @@ def _jsonpath_extract(data: Any, expr: str) -> list[Any]:
         # Recursive descent
         if path.startswith("."):
             path = path[1:]
-            results: list[Any] = []
             key_match = re.match(r"^(\w+)(.*)", path)
             if key_match:
                 key, rest = key_match.groups()
@@ -53,10 +52,10 @@ def _jsonpath_extract(data: Any, expr: str) -> list[Any]:
                     if isinstance(obj, dict):
                         if key in obj:
                             found.extend(_extract(obj[key], rest))
-                        for v in obj.values():
+                        for v in obj.values():  # pyright: ignore[reportUnknownVariableType]
                             found.extend(_recurse(v))
                     elif isinstance(obj, list):
-                        for item in obj:
+                        for item in obj:  # pyright: ignore[reportUnknownVariableType]
                             found.extend(_recurse(item))
                     return found
 
@@ -76,27 +75,28 @@ def _jsonpath_extract(data: Any, expr: str) -> list[Any]:
 
             # Wildcard
             if index_str == "*":
-                results = []
-                for item in current:
-                    results.extend(_extract(item, rest))
-                return results
+                wildcard_results: list[Any] = []
+                for item in current:  # pyright: ignore[reportUnknownVariableType]
+                    wildcard_results.extend(_extract(item, rest))
+                return wildcard_results
 
             # Slice
             if ":" in index_str:
                 parts = index_str.split(":")
                 start = int(parts[0]) if parts[0] else None
                 end = int(parts[1]) if parts[1] else None
-                sliced = current[start:end]
-                results = []
+                sliced: list[Any] = current[start:end]  # pyright: ignore[reportUnknownVariableType]
+                slice_results: list[Any] = []
                 for item in sliced:
-                    results.extend(_extract(item, rest))
-                return results
+                    slice_results.extend(_extract(item, rest))
+                return slice_results
 
             # Index
             try:
                 idx = int(index_str)
-                if 0 <= idx < len(current):
-                    return _extract(current[idx], rest)
+                current_list: list[Any] = current  # pyright: ignore[reportUnknownVariableType]
+                if 0 <= idx < len(current_list):
+                    return _extract(current_list[idx], rest)
             except ValueError:
                 pass
             return []
@@ -114,16 +114,16 @@ def _jsonpath_extract(data: Any, expr: str) -> list[Any]:
     return _extract(data, expr)
 
 
-@register_checker
-class JsonPathChecker(Checker):
+@register_stage
+class JsonPathStage(Stage):
     """Extract values using JSONPath expressions."""
 
     name = "jsonpath"
     description = "Extract values using JSONPath expressions"
-    is_network_checker = False
+    is_network_stage = False
 
     def __init__(self, expr: str = "$", store_as: str | None = None) -> None:
-        """Initialize JSONPath checker.
+        """Initialize JSONPath stage.
 
         Args:
             expr: JSONPath expression (e.g., "$.store.book[0].title")
@@ -165,7 +165,7 @@ class JsonPathChecker(Checker):
 
             # Store first match in context
             value = matches[0] if len(matches) == 1 else matches
-            if self.store_as and context is not None:
+            if self.store_as:
                 context.values[self.store_as] = value
 
             return CheckResult(

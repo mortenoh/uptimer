@@ -1,10 +1,10 @@
-"""JSON Schema checker - validates response against a JSON schema."""
+"""JSON Schema stage - validates response against a JSON schema."""
 
 import json
 from typing import Any
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
 def _validate_type(value: Any, expected_type: str) -> bool:
@@ -50,9 +50,10 @@ def _validate_schema(data: Any, schema: dict[str, Any], path: str = "") -> list[
     if "type" in schema:
         expected_type = schema["type"]
         if isinstance(expected_type, list):
-            if not any(_validate_type(data, t) for t in expected_type):
+            type_list: list[str] = expected_type  # pyright: ignore[reportUnknownVariableType]
+            if not any(_validate_type(data, t) for t in type_list):
                 errors.append(f"{path}: expected type {expected_type}, got {type(data).__name__}")
-        elif not _validate_type(data, expected_type):
+        elif isinstance(expected_type, str) and not _validate_type(data, expected_type):
             errors.append(f"{path}: expected type {expected_type}, got {type(data).__name__}")
 
     # Enum validation
@@ -76,7 +77,8 @@ def _validate_schema(data: Any, schema: dict[str, Any], path: str = "") -> list[
 
     # Array validation
     if isinstance(data, list) and "items" in schema:
-        for i, item in enumerate(data):
+        data_list: list[Any] = data  # pyright: ignore[reportUnknownVariableType]
+        for i, item in enumerate(data_list):
             errors.extend(_validate_schema(item, schema["items"], f"{path}[{i}]"))
 
     # Number validation
@@ -101,16 +103,16 @@ def _validate_schema(data: Any, schema: dict[str, Any], path: str = "") -> list[
     return errors
 
 
-@register_checker
-class JsonSchemaChecker(Checker):
+@register_stage
+class JsonSchemaStage(Stage):
     """Validate response body against a JSON schema."""
 
     name = "json-schema"
     description = "Validate response against JSON schema"
-    is_network_checker = False
+    is_network_stage = False
 
     def __init__(self, schema: dict[str, Any] | None = None) -> None:
-        """Initialize JSON schema checker.
+        """Initialize JSON schema stage.
 
         Args:
             schema: JSON schema to validate against

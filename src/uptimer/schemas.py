@@ -7,8 +7,8 @@ from croniter import croniter
 from pydantic import BaseModel, Field, field_validator
 
 
-class CheckConfig(BaseModel):
-    """Configuration for a single check."""
+class Stage(BaseModel):
+    """Configuration for a single pipeline stage."""
 
     type: str = Field(..., description="Checker type (http, dhis2, etc)")
     username: str | None = Field(default=None, description="Auth username")
@@ -38,6 +38,8 @@ class CheckConfig(BaseModel):
     schema_: dict[str, Any] | None = Field(default=None, alias="schema", description="JSON schema to validate")
     # Reference to stored value
     value: str | None = Field(default=None, description="Value reference (e.g., $elapsed_ms, $count)")
+    # HTTP headers
+    headers: dict[str, str] | None = Field(default=None, description="Custom HTTP headers")
 
 
 class MonitorCreate(BaseModel):
@@ -45,9 +47,9 @@ class MonitorCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="Display name")
     url: str = Field(..., description="URL to check")
-    checks: list[CheckConfig] = Field(
-        default_factory=lambda: [CheckConfig(type="http")],
-        description="Checks to run in order",
+    pipeline: list[Stage] = Field(
+        default_factory=lambda: [Stage(type="http")],
+        description="Pipeline stages to run in order",
     )
     interval: int = Field(default=30, ge=10, description="Check interval in seconds")
     schedule: str | None = Field(default=None, description="Cron expression (e.g. '*/5 * * * *')")
@@ -77,7 +79,7 @@ class MonitorUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     url: str | None = None
-    checks: list[CheckConfig] | None = None
+    pipeline: list[Stage] | None = None
     interval: int | None = Field(default=None, ge=10)
     schedule: str | None = None
     enabled: bool | None = None
@@ -91,6 +93,15 @@ class MonitorUpdate(BaseModel):
             raise ValueError("Name cannot be empty or whitespace only")
         return v.strip() if v else v
 
+    @field_validator("schedule")
+    @classmethod
+    def validate_cron_expression(cls, v: str | None) -> str | None:
+        """Validate cron expression if provided."""
+        if v is not None:
+            if not croniter.is_valid(v):
+                raise ValueError(f"Invalid cron expression: {v}")
+        return v
+
 
 class Monitor(BaseModel):
     """Full monitor model with all fields."""
@@ -98,7 +109,7 @@ class Monitor(BaseModel):
     id: str
     name: str
     url: str
-    checks: list[CheckConfig] = Field(default_factory=lambda: [CheckConfig(type="http")])
+    pipeline: list[Stage] = Field(default_factory=lambda: [Stage(type="http")])
     interval: int = 30
     schedule: str | None = None
     enabled: bool = True

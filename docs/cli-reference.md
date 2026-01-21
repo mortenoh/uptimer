@@ -100,7 +100,7 @@ uptimer add [OPTIONS] NAME URL
 
 **Options:**
 
-- `-c`, `--check TYPE` - Checker type (can be repeated, default: `http`)
+- `-c`, `--stage TYPE` - Checker type (can be repeated, default: `http`)
 - `-t`, `--tag TAG` - Tag (can be repeated)
 - `-i`, `--interval SECONDS` - Check interval in seconds (default: 30)
 - `-s`, `--schedule CRON` - Cron schedule expression
@@ -112,7 +112,7 @@ uptimer add [OPTIONS] NAME URL
 uptimer add "Google" https://google.com
 
 # With multiple checks
-uptimer add "My Site" https://example.com --check http --check ssl
+uptimer add "My Site" https://example.com --stage http --stage ssl
 
 # With tags and interval
 uptimer add "Production API" https://api.example.com \
@@ -234,12 +234,12 @@ uptimer tags
 uptimer --json tags
 ```
 
-### `checkers`
+### `stages`
 
-List available checker types.
+List available stage types.
 
 ```bash
-uptimer checkers
+uptimer stages
 ```
 
 This command runs locally and does not require the API server.
@@ -250,6 +250,8 @@ This command runs locally and does not require the API server.
   http - HTTP check with redirect following
   dhis2 - DHIS2 instance check with authentication
   ssl - SSL certificate expiry check
+  jq - Extract values using jq expressions
+  threshold - Assert values within bounds
 ```
 
 ### `serve`

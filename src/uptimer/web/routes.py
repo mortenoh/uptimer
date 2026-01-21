@@ -1,16 +1,11 @@
 """Web routes for uptimer."""
 
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from uptimer.settings import Settings, get_settings
-
-TEMPLATES_DIR = Path(__file__).parent / "templates"
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
 
@@ -21,17 +16,16 @@ def get_current_user(request: Request) -> str | None:
 
 
 @router.get("/", response_model=None)
-async def index(request: Request, user: str | None = Depends(get_current_user)) -> RedirectResponse:
-    """Home page - redirect to login or dashboard."""
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-    return RedirectResponse(url="/dashboard", status_code=302)
-
-
-@router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: str | None = None) -> HTMLResponse:
-    """Login page."""
-    return templates.TemplateResponse(request, "login.html", {"error": error})
+async def index() -> JSONResponse:
+    """API root - return service info."""
+    return JSONResponse(
+        {
+            "service": "uptimer",
+            "version": "0.1.0",
+            "docs": "/docs",
+            "api": "/api/monitors",
+        }
+    )
 
 
 @router.post("/login")
@@ -40,26 +34,17 @@ async def login(
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
     settings: Settings = Depends(get_settings),
-) -> RedirectResponse:
+) -> JSONResponse:
     """Handle login form submission."""
     if username == settings.username and password == settings.password:
         request.session["user"] = username
-        return RedirectResponse(url="/dashboard", status_code=302)
+        return JSONResponse({"status": "ok", "user": username})
 
-    return RedirectResponse(url="/login?error=Invalid+credentials", status_code=302)
+    return JSONResponse({"status": "error", "message": "Invalid credentials"}, status_code=401)
 
 
 @router.get("/logout")
 async def logout(request: Request) -> RedirectResponse:
     """Logout and clear session."""
     request.session.clear()
-    return RedirectResponse(url="/login", status_code=302)
-
-
-@router.get("/dashboard", response_model=None)
-async def dashboard(request: Request, user: str | None = Depends(get_current_user)) -> HTMLResponse | RedirectResponse:
-    """Dashboard page."""
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-
-    return templates.TemplateResponse(request, "dashboard.html", {"user": user})
+    return RedirectResponse(url="/", status_code=302)

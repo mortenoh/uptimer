@@ -1,24 +1,24 @@
-"""SSL checker - validates SSL/TLS certificates."""
+"""SSL stage - validates SSL/TLS certificates."""
 
 import socket
 import ssl
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
-@register_checker
-class SslChecker(Checker):
+@register_stage
+class SslStage(Stage):
     """Check SSL certificate validity and expiration."""
 
     name = "ssl"
     description = "Check SSL certificate validity and expiration"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(self, warn_days: int = 30, timeout: float = 10.0) -> None:
-        """Initialize SSL checker.
+        """Initialize SSL stage.
 
         Args:
             warn_days: Days before expiry to warn (returns DEGRADED)
@@ -69,14 +69,14 @@ class SslChecker(Checker):
             subject_cn = ""
             issuer_cn = ""
             for item in cert.get("subject", ()):
-                if isinstance(item, tuple) and len(item) > 0:
-                    kv = item[0] if isinstance(item[0], tuple) else item
-                    if isinstance(kv, tuple) and len(kv) >= 2 and kv[0] == "commonName":
+                if len(item) > 0:
+                    kv = item[0] if len(item[0]) == 2 else item
+                    if len(kv) >= 2 and kv[0] == "commonName":
                         subject_cn = str(kv[1])
             for item in cert.get("issuer", ()):
-                if isinstance(item, tuple) and len(item) > 0:
-                    kv = item[0] if isinstance(item[0], tuple) else item
-                    if isinstance(kv, tuple) and len(kv) >= 2 and kv[0] == "commonName":
+                if len(item) > 0:
+                    kv = item[0] if len(item[0]) == 2 else item
+                    if len(kv) >= 2 and kv[0] == "commonName":
                         issuer_cn = str(kv[1])
 
             # Parse expiry date

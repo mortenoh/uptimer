@@ -1,4 +1,4 @@
-"""DHIS2-specific checkers for version, integrity, and system checks."""
+"""DHIS2-specific stages for version, integrity, and system checks."""
 
 import re
 import time
@@ -6,8 +6,8 @@ from typing import Any
 
 import httpx
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
 def _get_dhis2_base_url(url: str, client: httpx.Client) -> str:
@@ -63,13 +63,13 @@ def _compare_versions(v1: tuple[int, int, int], v2: tuple[int, int, int]) -> int
     return 0
 
 
-@register_checker
-class Dhis2VersionChecker(Checker):
+@register_stage
+class Dhis2VersionStage(Stage):
     """Check DHIS2 version meets minimum requirement."""
 
     name = "dhis2-version"
     description = "Check DHIS2 version meets minimum requirement"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(
         self,
@@ -154,13 +154,13 @@ class Dhis2VersionChecker(Checker):
             )
 
 
-@register_checker
-class Dhis2IntegrityChecker(Checker):
+@register_stage
+class Dhis2IntegrityStage(Stage):
     """Run DHIS2 data integrity checks."""
 
     name = "dhis2-integrity"
     description = "Run DHIS2 data integrity checks"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(
         self,
@@ -212,10 +212,11 @@ class Dhis2IntegrityChecker(Checker):
                         details={"status_code": response.status_code},
                     )
 
-                checks = response.json()
+                checks: Any = response.json()
 
                 # Count available checks
-                check_count = len(checks) if isinstance(checks, list) else 0
+                checks_list: list[Any] = checks if isinstance(checks, list) else []  # pyright: ignore[reportUnknownVariableType]
+                check_count = len(checks_list)
 
                 return CheckResult(
                     status=Status.UP,
@@ -237,13 +238,13 @@ class Dhis2IntegrityChecker(Checker):
             )
 
 
-@register_checker
-class Dhis2JobChecker(Checker):
+@register_stage
+class Dhis2JobStage(Stage):
     """Check DHIS2 scheduled job status."""
 
     name = "dhis2-job"
     description = "Check DHIS2 scheduled job status"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(
         self,
@@ -335,13 +336,13 @@ class Dhis2JobChecker(Checker):
             )
 
 
-@register_checker
-class Dhis2AnalyticsChecker(Checker):
+@register_stage
+class Dhis2AnalyticsStage(Stage):
     """Check DHIS2 analytics table status."""
 
     name = "dhis2-analytics"
     description = "Check DHIS2 analytics table generation status"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(
         self,

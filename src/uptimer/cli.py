@@ -11,7 +11,7 @@ from rich.table import Table
 
 from uptimer import __version__
 from uptimer.client import AuthenticationError, NotFoundError, UptimerClient, UptimerClientError
-from uptimer.schemas import CheckConfig, MonitorCreate
+from uptimer.schemas import MonitorCreate, Stage
 
 app = typer.Typer(
     name="uptimer",
@@ -161,9 +161,9 @@ def get_monitor(
         rprint(f"  [dim]Schedule:[/dim] {monitor.schedule}")
     if monitor.tags:
         rprint(f"  [dim]Tags:[/dim] {', '.join(monitor.tags)}")
-    rprint("  [dim]Checks:[/dim]")
-    for check in monitor.checks:
-        rprint(f"    - {check.type}")
+    rprint("  [dim]Pipeline:[/dim]")
+    for stage in monitor.pipeline:
+        rprint(f"    - {stage.type}")
     if monitor.last_check:
         rprint(f"  [dim]Last Check:[/dim] {_format_time_ago(monitor.last_check)}")
     rprint(f"  [dim]Created:[/dim] {monitor.created_at.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -173,19 +173,21 @@ def get_monitor(
 def add_monitor(
     name: Annotated[str, typer.Argument(help="Monitor name")],
     url: Annotated[str, typer.Argument(help="URL to monitor")],
-    check: Annotated[list[str] | None, typer.Option("--check", "-c", help="Checker type (can be repeated)")] = None,
+    stage: Annotated[
+        list[str] | None, typer.Option("--stage", "-s", help="Pipeline stage type (can be repeated)")
+    ] = None,
     tag: Annotated[list[str] | None, typer.Option("--tag", "-t", help="Tag (can be repeated)")] = None,
     interval: Annotated[int, typer.Option("--interval", "-i", help="Check interval in seconds")] = 30,
-    schedule: Annotated[str | None, typer.Option("--schedule", "-s", help="Cron schedule expression")] = None,
+    schedule: Annotated[str | None, typer.Option("--schedule", help="Cron schedule expression")] = None,
 ) -> None:
     """Create a new monitor."""
-    checks = [CheckConfig(type=c) for c in check] if check else [CheckConfig(type="http")]
+    pipeline = [Stage(type=s) for s in stage] if stage else [Stage(type="http")]
     tags = list(tag) if tag else []
 
     data = MonitorCreate(
         name=name,
         url=url,
-        checks=checks,
+        pipeline=pipeline,
         tags=tags,
         interval=interval,
         schedule=schedule,
@@ -334,23 +336,23 @@ def list_tags() -> None:
 
 
 @app.command()
-def checkers() -> None:
-    """List available checkers."""
-    from uptimer.checkers import get_checker, list_checkers
+def stages() -> None:
+    """List available stages."""
+    from uptimer.stages import get_stage, list_stages
 
-    checker_list = list_checkers()
+    stage_list = list_stages()
 
     if _json_output:
         data: list[dict[str, str]] = []
-        for name in checker_list:
-            checker_class = get_checker(name)
-            data.append({"name": name, "description": checker_class.description})
+        for name in stage_list:
+            stage_class = get_stage(name)
+            data.append({"name": name, "description": stage_class.description})
         print(json.dumps(data, indent=2))
         return
 
-    for name in checker_list:
-        checker_class = get_checker(name)
-        rprint(f"  [cyan]{name}[/cyan] - {checker_class.description}")
+    for name in stage_list:
+        stage_class = get_stage(name)
+        rprint(f"  [cyan]{name}[/cyan] - {stage_class.description}")
 
 
 @app.command()

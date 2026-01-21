@@ -1,20 +1,20 @@
-"""DHIS2 checker - checks DHIS2 instance health with authentication."""
+"""DHIS2 stage - checks DHIS2 instance health with authentication."""
 
 import time
 
 import httpx
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
-@register_checker
-class Dhis2Checker(Checker):
-    """DHIS2 health checker with basic authentication."""
+@register_stage
+class Dhis2Stage(Stage):
+    """DHIS2 health stage with basic authentication."""
 
     name = "dhis2"
     description = "DHIS2 instance check with authentication"
-    is_network_checker = True
+    is_network_stage = True
 
     def __init__(
         self,
@@ -46,10 +46,11 @@ class Dhis2Checker(Checker):
                 base_response = client.get(url)
                 base_url = str(base_response.url).rstrip("/")
 
-                # Remove any path after the base (like /dhis-web-login/)
-                # Find the DHIS2 context path
-                if "/dhis-web-" in base_url:
-                    base_url = base_url.split("/dhis-web-")[0]
+                # Remove any path after the base (like /dhis-web-login/, /login/, etc.)
+                for path_suffix in ["/dhis-web-", "/login", "/#"]:
+                    if path_suffix in base_url:
+                        base_url = base_url.split(path_suffix)[0]
+                        break
 
                 # Now call the API endpoint
                 api_url = f"{base_url}/api/system/info"
@@ -60,7 +61,7 @@ class Dhis2Checker(Checker):
                 details["base_url"] = base_url
                 details["api_url"] = api_url
 
-                # Store response data in context for subsequent checks
+                # Store response data in context for subsequent stages
                 if context is not None:
                     context.response_body = response.text
                     context.response_headers = dict(response.headers)

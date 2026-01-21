@@ -11,7 +11,6 @@ from uptimer.settings import get_settings
 from uptimer.web.api import monitors_router
 from uptimer.web.routes import router
 
-TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 

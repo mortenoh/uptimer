@@ -1,5 +1,7 @@
 # Getting Started
 
+For a conceptual overview of Uptimer's architecture and features, see the [Introduction Guide](introduction.md).
+
 ## Installation
 
 ```bash
@@ -41,7 +43,7 @@ uptimer add "Google" https://google.com
 
 # Add with multiple checks and tags
 uptimer add "My API" https://api.example.com \
-  --check http --check ssl \
+  --stage http --stage ssl \
   --tag production --interval 60
 ```
 
@@ -108,7 +110,15 @@ export UPTIMER_API_URL=http://localhost:8000
 
 ## Web UI
 
-Access the web dashboard at `http://localhost:8000/dashboard` after starting the server.
+The React frontend runs separately from the API:
+
+```bash
+cd clients/web
+npm install
+npm run dev
+```
+
+Access the dashboard at `http://localhost:3000`. Login with the credentials from your config (default: `admin`/`admin`).
 
 ## Development
 

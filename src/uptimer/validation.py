@@ -2,7 +2,7 @@
 
 from urllib.parse import urlparse
 
-from uptimer.checkers.registry import list_checkers
+from uptimer.stages.registry import list_stages
 
 
 def validate_url(url: str) -> str:
@@ -33,22 +33,22 @@ def validate_url(url: str) -> str:
     return url
 
 
-def validate_checker(checker: str) -> str:
-    """Validate checker type exists in registry.
+def validate_stage(stage: str) -> str:
+    """Validate stage type exists in registry.
 
     Args:
-        checker: Checker name to validate
+        stage: Stage name to validate
 
     Returns:
-        Validated checker name
+        Validated stage name
 
     Raises:
-        ValueError: If checker doesn't exist
+        ValueError: If stage doesn't exist
     """
-    available = list_checkers()
-    if checker not in available:
-        raise ValueError(f"Unknown checker: {checker}. Available: {', '.join(available)}")
-    return checker
+    available = list_stages()
+    if stage not in available:
+        raise ValueError(f"Unknown stage: {stage}. Available: {', '.join(available)}")
+    return stage
 
 
 def validate_interval(interval: int) -> int:

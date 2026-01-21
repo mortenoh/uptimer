@@ -1,32 +1,33 @@
 # API Reference
 
-## Checkers
+## Stages
 
 ### Base Classes
 
-::: uptimer.checkers.base
+::: uptimer.stages.base
     options:
       show_source: true
       members:
         - Status
         - CheckResult
-        - Checker
+        - CheckContext
+        - Stage
 
-### HTTP Checker
+### HTTP Stage
 
-::: uptimer.checkers.http.HttpChecker
+::: uptimer.stages.http.HttpStage
     options:
       show_source: true
 
 ### Registry
 
-::: uptimer.checkers.registry
+::: uptimer.stages.registry
     options:
       show_source: true
       members:
-        - register_checker
-        - get_checker
-        - list_checkers
+        - register_stage
+        - get_stage
+        - list_stages
 
 ## Logging
 

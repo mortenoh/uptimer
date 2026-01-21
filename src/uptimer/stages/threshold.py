@@ -1,9 +1,9 @@
-"""Threshold checker - asserts values are within bounds."""
+"""Threshold stage - asserts values are within bounds."""
 
 from typing import Any
 
-from uptimer.checkers.base import CheckContext, Checker, CheckResult, Status
-from uptimer.checkers.registry import register_checker
+from uptimer.stages.base import CheckContext, CheckResult, Stage, Status
+from uptimer.stages.registry import register_stage
 
 
 def _resolve_value(value_ref: str, context: CheckContext) -> Any:
@@ -39,13 +39,13 @@ def _resolve_value(value_ref: str, context: CheckContext) -> Any:
     return context.values.get(key)
 
 
-@register_checker
-class ThresholdChecker(Checker):
+@register_stage
+class ThresholdStage(Stage):
     """Assert a value is within min/max bounds."""
 
     name = "threshold"
     description = "Assert value is within threshold bounds"
-    is_network_checker = False
+    is_network_stage = False
 
     def __init__(
         self,
@@ -53,7 +53,7 @@ class ThresholdChecker(Checker):
         min_value: float | None = None,
         max_value: float | None = None,
     ) -> None:
-        """Initialize threshold checker.
+        """Initialize threshold stage.
 
         Args:
             value_ref: Value reference (e.g., "$elapsed_ms", "$count")

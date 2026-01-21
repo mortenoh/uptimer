@@ -8,7 +8,7 @@ import mongomock
 import pytest
 from pymongo import MongoClient
 
-from uptimer.schemas import CheckConfig, CheckResultRecord, MonitorCreate, MonitorUpdate
+from uptimer.schemas import CheckResultRecord, MonitorCreate, MonitorUpdate, Stage
 from uptimer.storage import Storage
 
 
@@ -49,14 +49,14 @@ class TestMonitorCRUD:
         monitor = storage.create_monitor(data)
         assert monitor.url == "https://example.com"
 
-    def test_create_monitor_invalid_checker(self, storage: Storage) -> None:
-        """Test creating monitor with invalid checker."""
+    def test_create_monitor_invalid_stage(self, storage: Storage) -> None:
+        """Test creating monitor with invalid stage."""
         data = MonitorCreate(
             name="Test",
             url="https://example.com",
-            checks=[CheckConfig(type="invalid")],
+            pipeline=[Stage(type="invalid")],
         )
-        with pytest.raises(ValueError, match="Unknown checker"):
+        with pytest.raises(ValueError, match="Unknown stage"):
             storage.create_monitor(data)
 
     def test_create_monitor_invalid_interval(self, storage: Storage) -> None:
@@ -120,13 +120,13 @@ class TestMonitorCRUD:
         result = storage.update_monitor("nonexistent", update)
         assert result is None
 
-    def test_update_monitor_invalid_checker(self, storage: Storage) -> None:
-        """Test updating with invalid checker."""
+    def test_update_monitor_invalid_stage(self, storage: Storage) -> None:
+        """Test updating with invalid stage."""
         data = MonitorCreate(name="Test", url="https://example.com")
         created = storage.create_monitor(data)
 
-        update = MonitorUpdate(checks=[CheckConfig(type="invalid")])
-        with pytest.raises(ValueError, match="Unknown checker"):
+        update = MonitorUpdate(pipeline=[Stage(type="invalid")])
+        with pytest.raises(ValueError, match="Unknown stage"):
             storage.update_monitor(created.id, update)
 
     def test_delete_monitor(self, storage: Storage) -> None:

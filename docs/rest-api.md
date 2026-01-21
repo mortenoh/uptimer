@@ -26,7 +26,7 @@ Response: `200 OK`
     "id": "uuid",
     "name": "Google",
     "url": "https://www.google.com",
-    "checks": [{"type": "http"}],
+    "pipeline": [{"type": "http"}],
     "interval": 30,
     "schedule": null,
     "enabled": true,
@@ -50,7 +50,7 @@ Request body:
 {
   "name": "My Service",
   "url": "https://api.example.com",
-  "checks": [
+  "pipeline": [
     {"type": "http"},
     {"type": "dhis2", "username": "admin", "password": "district"}
   ],
@@ -81,7 +81,7 @@ Request body (all fields optional):
 ```json
 {
   "name": "Updated Name",
-  "checks": [{"type": "http"}],
+  "pipeline": [{"type": "http"}],
   "interval": 60,
   "enabled": false,
   "tags": ["staging"]
@@ -176,10 +176,22 @@ Response: `200 OK`
 
 ### HTTP Check
 
-Basic HTTP/HTTPS connectivity check.
+Basic HTTP/HTTPS connectivity check with optional custom headers.
 
 ```json
 {"type": "http"}
+```
+
+With custom headers (e.g., for API authentication):
+
+```json
+{
+  "type": "http",
+  "headers": {
+    "Authorization": "Bearer your-token",
+    "X-API-Key": "your-api-key"
+  }
+}
 ```
 
 ### DHIS2 Check

@@ -9,7 +9,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 
 from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
-from uptimer.validation import validate_checker, validate_interval, validate_url
+from uptimer.validation import validate_interval, validate_stage, validate_url
 
 
 class Storage:
@@ -90,8 +90,8 @@ class Storage:
         """
         # Validate
         url = validate_url(data.url)
-        for check in data.checks:
-            validate_checker(check.type)
+        for stage in data.pipeline:
+            validate_stage(stage.type)
         validate_interval(data.interval)
 
         now = datetime.now(timezone.utc)
@@ -101,7 +101,7 @@ class Storage:
             "_id": monitor_id,
             "name": data.name,
             "url": url,
-            "checks": [c.model_dump(exclude_none=True) for c in data.checks],
+            "pipeline": [s.model_dump(exclude_none=True) for s in data.pipeline],
             "interval": data.interval,
             "schedule": data.schedule,
             "enabled": data.enabled,
@@ -139,13 +139,13 @@ class Storage:
         # Validate updated fields
         if "url" in update_data:
             update_data["url"] = validate_url(update_data["url"])
-        if "checks" in update_data:
-            # Convert CheckConfig objects to dicts and validate
-            checks_list: list[dict[str, Any]] = []
-            for check in update_data["checks"]:
-                validate_checker(check["type"])
-                checks_list.append(check)
-            update_data["checks"] = checks_list
+        if "pipeline" in update_data:
+            # Convert Stage objects to dicts and validate
+            pipeline_list: list[dict[str, Any]] = []
+            for stage in update_data["pipeline"]:
+                validate_stage(stage["type"])
+                pipeline_list.append(stage)
+            update_data["pipeline"] = pipeline_list
         if "interval" in update_data:
             validate_interval(update_data["interval"])
 

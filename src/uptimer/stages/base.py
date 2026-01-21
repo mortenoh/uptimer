@@ -1,4 +1,4 @@
-"""Base classes for checkers."""
+"""Base classes for stages."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -27,7 +27,7 @@ class CheckResult:
 
 @dataclass
 class CheckContext:
-    """Context passed between checks in a chain."""
+    """Context passed between stages in a pipeline."""
 
     url: str
     response_body: str | None = None
@@ -37,14 +37,14 @@ class CheckContext:
     elapsed_ms: float = 0.0
 
 
-class Checker(ABC):
-    """Base class for all checkers."""
+class Stage(ABC):
+    """Base class for all stages."""
 
     name: str = "base"
-    description: str = "Base checker"
+    description: str = "Base stage"
 
-    # Whether this checker makes HTTP requests (vs transforms data)
-    is_network_checker: bool = True
+    # Whether this stage makes HTTP requests (vs transforms data)
+    is_network_stage: bool = True
 
     @abstractmethod
     def check(self, url: str, verbose: bool = False, context: CheckContext | None = None) -> CheckResult:
@@ -53,7 +53,7 @@ class Checker(ABC):
         Args:
             url: URL to check
             verbose: Whether to include verbose output
-            context: Optional context from previous checks
+            context: Optional context from previous stages
 
         Returns:
             CheckResult with status, message, and details

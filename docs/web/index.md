@@ -64,7 +64,7 @@ curl -X POST -b cookies.txt "http://localhost:8000/api/monitors" \
   -d '{
     "name": "My Service",
     "url": "https://example.com",
-    "checker": "http",
+    "pipeline": [{"type": "http"}],
     "tags": ["production", "api"],
     "interval": 60
   }'
@@ -93,10 +93,9 @@ curl -b cookies.txt "http://localhost:8000/api/monitors/{id}/results?limit=100"
 |-------|------|----------|---------|-------------|
 | `name` | string | Yes | - | Display name (1-100 chars) |
 | `url` | string | Yes | - | URL to monitor |
-| `checker` | string | No | `http` | Checker type (`http`, `dhis2`) |
-| `username` | string | No | `null` | Auth username |
-| `password` | string | No | `null` | Auth password |
-| `interval` | int | No | `60` | Check interval in seconds (min 10) |
+| `pipeline` | array | No | `[{"type": "http"}]` | Array of stage configurations |
+| `interval` | int | No | `30` | Check interval in seconds (min 10) |
+| `schedule` | string | No | `null` | Cron schedule (alternative to interval) |
 | `enabled` | bool | No | `true` | Whether monitor is active |
 | `tags` | list | No | `[]` | Tags for grouping/filtering |
 

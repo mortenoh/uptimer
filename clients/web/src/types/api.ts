@@ -1,4 +1,4 @@
-export interface CheckConfig {
+export interface Stage {
   type: string;
   username?: string;
   password?: string;
@@ -28,7 +28,7 @@ export interface Monitor {
   id: string;
   name: string;
   url: string;
-  checks: CheckConfig[];
+  pipeline: Stage[];
   interval: number;
   schedule: string | null;
   enabled: boolean;
@@ -42,7 +42,7 @@ export interface Monitor {
 export interface MonitorCreate {
   name: string;
   url: string;
-  checks?: CheckConfig[];
+  pipeline?: Stage[];
   interval?: number;
   schedule?: string;
   enabled?: boolean;
@@ -52,7 +52,7 @@ export interface MonitorCreate {
 export interface MonitorUpdate {
   name?: string;
   url?: string;
-  checks?: CheckConfig[];
+  pipeline?: Stage[];
   interval?: number;
   schedule?: string;
   enabled?: boolean;

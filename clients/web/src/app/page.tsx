@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { Monitor, CheckResult } from "@/types/api";
+import type { Monitor, MonitorCreate, CheckResult } from "@/types/api";
 import { LoginForm } from "@/components/login-form";
 import { Dashboard } from "@/components/dashboard";
 
@@ -100,6 +100,11 @@ export default function Home() {
     return api.getResults(monitorId, 50);
   }
 
+  async function handleAddMonitor(data: MonitorCreate): Promise<void> {
+    await api.createMonitor(data);
+    await loadData();
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -126,6 +131,7 @@ export default function Home() {
       onDeleteMonitor={handleDeleteMonitor}
       onToggleMonitor={handleToggleMonitor}
       onLoadLogs={handleLoadLogs}
+      onAddMonitor={handleAddMonitor}
     />
   );
 }

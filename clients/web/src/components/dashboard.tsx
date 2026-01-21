@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MonitorCard } from "@/components/monitor-card";
 import { MonitorLogs } from "@/components/monitor-logs";
-import type { Monitor, CheckResult } from "@/types/api";
+import { AddMonitorDialog } from "@/components/add-monitor-dialog";
+import type { Monitor, MonitorCreate, CheckResult } from "@/types/api";
 
 interface DashboardProps {
   monitors: Monitor[];
@@ -20,6 +21,7 @@ interface DashboardProps {
   onDeleteMonitor: (id: string) => void;
   onToggleMonitor: (id: string, enabled: boolean) => void;
   onLoadLogs: (monitorId: string) => Promise<CheckResult[]>;
+  onAddMonitor: (data: MonitorCreate) => Promise<void>;
 }
 
 export function Dashboard({
@@ -35,8 +37,10 @@ export function Dashboard({
   onDeleteMonitor,
   onToggleMonitor,
   onLoadLogs,
+  onAddMonitor,
 }: DashboardProps) {
   const [logsMonitor, setLogsMonitor] = useState<Monitor | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const upCount = monitors.filter((m) => m.last_status === "up").length;
   const degradedCount = monitors.filter((m) => m.last_status === "degraded").length;
   const downCount = monitors.filter((m) => m.last_status === "down").length;
@@ -74,6 +78,12 @@ export function Dashboard({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Run All
+              </Button>
+              <Button size="sm" onClick={() => setShowAddDialog(true)}>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Monitor
               </Button>
               <Button variant="ghost" size="sm" onClick={onLogout}>
                 Logout
@@ -178,6 +188,16 @@ export function Dashboard({
           open={logsMonitor !== null}
           onClose={() => setLogsMonitor(null)}
           onLoadLogs={onLoadLogs}
+        />
+
+        {/* Add Monitor Dialog */}
+        <AddMonitorDialog
+          open={showAddDialog}
+          onClose={() => setShowAddDialog(false)}
+          onAdd={async (data) => {
+            await onAddMonitor(data);
+            setShowAddDialog(false);
+          }}
         />
       </main>
     </div>
