@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Uptimer API",
-    "description": "API collection for Uptimer monitoring service",
+    "description": "API collection for Uptimer monitoring service.\n\nThis collection includes examples for all monitor types and pipeline configurations.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -44,6 +44,17 @@
               "path": ["login"]
             }
           }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["logout"]
+            }
+          }
         }
       ]
     },
@@ -75,48 +86,6 @@
                   "value": "production"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Monitor (HTTP)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Example Service\",\n  \"url\": \"https://example.com\",\n  \"checks\": [{\"type\": \"http\"}],\n  \"interval\": 30,\n  \"enabled\": true,\n  \"tags\": [\"production\", \"api\"]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/monitors",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "monitors"]
-            }
-          }
-        },
-        {
-          "name": "Create Monitor (DHIS2)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"DHIS2 Instance\",\n  \"url\": \"https://play.dhis2.org/demo\",\n  \"checks\": [{\"type\": \"dhis2\", \"username\": \"admin\", \"password\": \"district\"}],\n  \"interval\": 60,\n  \"enabled\": true,\n  \"tags\": [\"dhis2\", \"health\"]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/monitors",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "monitors"]
             }
           }
         },
@@ -247,6 +216,320 @@
                 }
               ]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Monitor Examples",
+      "description": "Examples of creating monitors with different pipeline configurations",
+      "item": [
+        {
+          "name": "Simple HTTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"JSONPlaceholder Users\",\n  \"url\": \"https://jsonplaceholder.typicode.com/users\",\n  \"pipeline\": [{\"type\": \"http\"}],\n  \"interval\": 30,\n  \"tags\": [\"api\", \"demo\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Basic HTTP monitor that checks if a URL returns a successful response."
+          }
+        },
+        {
+          "name": "HTTP with Custom Headers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Protected API\",\n  \"url\": \"https://api.example.com/data\",\n  \"pipeline\": [\n    {\n      \"type\": \"http\",\n      \"headers\": {\n        \"Authorization\": \"Bearer your-token\",\n        \"X-API-Key\": \"your-api-key\"\n      }\n    }\n  ],\n  \"interval\": 60,\n  \"tags\": [\"api\", \"protected\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "HTTP monitor with custom headers for authentication."
+          }
+        },
+        {
+          "name": "HTTP + SSL Check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"JSONPlaceholder SSL\",\n  \"url\": \"https://jsonplaceholder.typicode.com\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"ssl\", \"warn_days\": 30}\n  ],\n  \"interval\": 3600,\n  \"tags\": [\"ssl\", \"demo\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Check HTTP connectivity and SSL certificate expiration. Status becomes DEGRADED when certificate expires within warn_days."
+          }
+        },
+        {
+          "name": "Content Validation (contains)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Posts Content Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/posts\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"contains\", \"pattern\": \"userId\"}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"api\", \"content\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Check that response body contains expected text. Use negate: true to check text is NOT present."
+          }
+        },
+        {
+          "name": "Value Extraction (jq + threshold)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Posts Count Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/posts\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"jq\", \"expr\": \"length\", \"store_as\": \"post_count\"},\n    {\"type\": \"threshold\", \"value\": \"$post_count\", \"min\": 100, \"max\": 100}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"api\", \"validation\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Extract array length with jq, then assert value equals 100. Use $variable syntax to reference stored values."
+          }
+        },
+        {
+          "name": "Response Time Threshold",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"API Response Time\",\n  \"url\": \"https://jsonplaceholder.typicode.com/posts/1\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"threshold\", \"value\": \"$elapsed_ms\", \"max\": 2000}\n  ],\n  \"interval\": 30,\n  \"tags\": [\"api\", \"performance\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Check response time is under 2 seconds. $elapsed_ms is a built-in variable containing HTTP request duration."
+          }
+        },
+        {
+          "name": "JSONPath Extraction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User Company Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/users/1\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"jsonpath\", \"expr\": \"$.company.name\", \"store_as\": \"company\"},\n    {\"type\": \"contains\", \"pattern\": \"Romaguera\"}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"api\", \"demo\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Extract nested value using JSONPath, then validate content."
+          }
+        },
+        {
+          "name": "JSON Schema Validation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User Schema Validation\",\n  \"url\": \"https://jsonplaceholder.typicode.com/users/1\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\n      \"type\": \"json-schema\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"required\": [\"id\", \"name\", \"email\"],\n        \"properties\": {\n          \"id\": {\"type\": \"integer\"},\n          \"name\": {\"type\": \"string\"},\n          \"email\": {\"type\": \"string\", \"format\": \"email\"}\n        }\n      }\n    }\n  ],\n  \"interval\": 300,\n  \"tags\": [\"api\", \"schema\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Validate response against a JSON schema. Fails if required fields missing or types don't match."
+          }
+        },
+        {
+          "name": "Regex Extraction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Email Domain Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/users/1\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"regex\", \"pattern\": \"\\\"email\\\":\\s*\\\"[^@]+@([^\\\"]+)\\\"\", \"store_as\": \"domain\"},\n    {\"type\": \"contains\", \"pattern\": \".biz\"}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"api\", \"demo\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Extract value using regex capture group, then validate."
+          }
+        },
+        {
+          "name": "Header Extraction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Server Header Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/posts/1\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"header\", \"pattern\": \"content-type\", \"store_as\": \"content_type\"},\n    {\"type\": \"contains\", \"pattern\": \"application/json\"}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"api\", \"headers\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Extract HTTP response header and validate its value."
+          }
+        },
+        {
+          "name": "Complete Health Check Pipeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Full API Health Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/posts/1\",\n  \"pipeline\": [\n    {\"type\": \"http\"},\n    {\"type\": \"ssl\", \"warn_days\": 14},\n    {\"type\": \"threshold\", \"value\": \"$elapsed_ms\", \"max\": 3000},\n    {\"type\": \"jq\", \"expr\": \".id\", \"store_as\": \"post_id\"},\n    {\"type\": \"threshold\", \"value\": \"$post_id\", \"min\": 1, \"max\": 100}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"production\", \"critical\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Production-ready health check: HTTP + SSL + response time + value extraction + validation."
+          }
+        },
+        {
+          "name": "DHIS2 System Check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"DHIS2 Demo Instance\",\n  \"url\": \"https://play.dhis2.org/demo\",\n  \"pipeline\": [\n    {\"type\": \"dhis2\", \"username\": \"admin\", \"password\": \"district\"}\n  ],\n  \"interval\": 60,\n  \"tags\": [\"dhis2\", \"demo\", \"health\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "DHIS2 system info check with authentication."
+          }
+        },
+        {
+          "name": "DHIS2 with Version Check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"DHIS2 Version Monitor\",\n  \"url\": \"https://play.dhis2.org/demo\",\n  \"pipeline\": [\n    {\"type\": \"dhis2\", \"username\": \"admin\", \"password\": \"district\"},\n    {\"type\": \"dhis2-version\", \"username\": \"admin\", \"password\": \"district\", \"min\": \"2.38.0\"}\n  ],\n  \"interval\": 3600,\n  \"tags\": [\"dhis2\", \"version\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Check DHIS2 system info and verify minimum version requirement."
+          }
+        },
+        {
+          "name": "Monitor with Cron Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hourly Check\",\n  \"url\": \"https://jsonplaceholder.typicode.com/posts\",\n  \"pipeline\": [{\"type\": \"http\"}],\n  \"schedule\": \"0 * * * *\",\n  \"tags\": [\"scheduled\", \"hourly\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monitors",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "monitors"]
+            },
+            "description": "Monitor with cron schedule instead of interval. Uses standard cron syntax: minute hour day month weekday."
           }
         }
       ]
