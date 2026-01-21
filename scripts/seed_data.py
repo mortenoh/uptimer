@@ -12,10 +12,10 @@ from uptimer.storage import Storage
 
 # Common websites to monitor - all publicly accessible and introspectable
 SEED_MONITORS = [
-    # Local test service - use for testing scheduler with up/down cycles
+    # Local test service - use host.docker.internal to reach host from container
     MonitorCreate(
         name="Local Test Service",
-        url="http://localhost:8081",
+        url="http://host.docker.internal:8081",
         pipeline=[Stage(type="http")],
         interval=10,
         tags=["local", "test"],
