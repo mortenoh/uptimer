@@ -4,12 +4,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+import structlog
 from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.errors import ConnectionFailure
 
 from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
 from uptimer.validation import validate_interval, validate_stage, validate_url
+
+logger = structlog.get_logger()
 
 
 class Storage:
@@ -35,7 +39,18 @@ class Storage:
         self._db: Database[dict[str, Any]] = self._client[mongodb_db]
         self._monitors: Collection[dict[str, Any]] = self._db["monitors"]
         self._results: Collection[dict[str, Any]] = self._db["results"]
+        self._validate_connection()
         self._ensure_indexes()
+
+    def _validate_connection(self) -> None:
+        """Validate MongoDB connection is working."""
+        try:
+            # Ping the server to verify connection
+            self._client.admin.command("ping")
+            logger.debug("MongoDB connection validated")
+        except ConnectionFailure as e:
+            logger.error("MongoDB connection failed", error=str(e))
+            raise ConnectionFailure(f"Failed to connect to MongoDB: {e}") from e
 
     def _ensure_indexes(self) -> None:
         """Create indexes for efficient queries."""

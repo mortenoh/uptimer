@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +16,10 @@ from uptimer.web.api import monitors_router, stages_router
 from uptimer.web.api.deps import get_storage
 from uptimer.web.routes import router
 
+logger = structlog.get_logger()
+
 STATIC_DIR = Path(__file__).parent / "static"
+DEFAULT_SECRET_KEY = "change-me-in-production"
 
 
 @asynccontextmanager
@@ -32,6 +36,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = get_settings()
+
+    # Warn if using default secret key
+    if settings.secret_key == DEFAULT_SECRET_KEY:
+        logger.warning(
+            "Using default secret key - sessions are not secure",
+            hint="Set UPTIMER_SECRET_KEY environment variable",
+        )
 
     app = FastAPI(
         title="Uptimer",

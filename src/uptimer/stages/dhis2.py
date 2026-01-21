@@ -19,10 +19,14 @@ class Dhis2Stage(Stage):
     def __init__(
         self,
         username: str = "admin",
-        password: str = "district",
+        password: str = "district",  # Default for play.dhis2.org demo instances
         timeout: float = 30.0,
     ) -> None:
-        """Initialize with credentials and timeout."""
+        """Initialize with credentials and timeout.
+
+        Note: Default credentials are for DHIS2 demo instances (play.dhis2.org).
+        Always provide explicit credentials for production instances.
+        """
         self.username = username
         self.password = password
         self.timeout = timeout

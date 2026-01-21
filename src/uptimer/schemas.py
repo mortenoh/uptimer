@@ -46,7 +46,7 @@ class MonitorCreate(BaseModel):
     """Model for creating a new monitor."""
 
     name: str = Field(..., min_length=1, max_length=100, description="Display name")
-    url: str = Field(..., description="URL to check")
+    url: str = Field(..., max_length=2048, description="URL to check")
     pipeline: list[Stage] = Field(
         default_factory=lambda: [Stage(type="http")],
         description="Pipeline stages to run in order",
@@ -78,7 +78,7 @@ class MonitorUpdate(BaseModel):
     """Model for updating a monitor. All fields optional."""
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    url: str | None = None
+    url: str | None = Field(default=None, max_length=2048)
     pipeline: list[Stage] | None = None
     interval: int | None = Field(default=None, ge=10)
     schedule: str | None = None

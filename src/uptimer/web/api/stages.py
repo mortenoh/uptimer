@@ -65,7 +65,7 @@ STAGE_METADATA: dict[str, dict[str, Any]] = {
                 "name": "password",
                 "label": "Password",
                 "type": "string",
-                "default": "district",
+                "required": True,
                 "description": "DHIS2 password",
             },
         ],
@@ -272,7 +272,7 @@ STAGE_METADATA: dict[str, dict[str, Any]] = {
             },
         ],
     },
-    "json_schema": {
+    "json-schema": {
         "name": "JSON Schema",
         "description": "Validate response against JSON Schema",
         "is_network_stage": False,
@@ -287,9 +287,9 @@ STAGE_METADATA: dict[str, dict[str, Any]] = {
             },
         ],
     },
-    "dhis2_checks": {
-        "name": "DHIS2 Checks",
-        "description": "Run DHIS2 system checks endpoint",
+    "dhis2-version": {
+        "name": "DHIS2 Version",
+        "description": "Check DHIS2 version meets minimum requirement",
         "is_network_stage": True,
         "options": [
             {
@@ -303,8 +303,89 @@ STAGE_METADATA: dict[str, dict[str, Any]] = {
                 "name": "password",
                 "label": "Password",
                 "type": "string",
-                "default": "district",
                 "description": "DHIS2 password",
+            },
+            {
+                "name": "min_version",
+                "label": "Minimum Version",
+                "type": "string",
+                "default": "2.38.0",
+                "description": "Minimum required DHIS2 version",
+                "placeholder": "2.40.0",
+            },
+        ],
+    },
+    "dhis2-integrity": {
+        "name": "DHIS2 Integrity",
+        "description": "Run DHIS2 data integrity checks",
+        "is_network_stage": True,
+        "options": [
+            {
+                "name": "username",
+                "label": "Username",
+                "type": "string",
+                "default": "admin",
+                "description": "DHIS2 username",
+            },
+            {
+                "name": "password",
+                "label": "Password",
+                "type": "string",
+                "description": "DHIS2 password",
+            },
+        ],
+    },
+    "dhis2-job": {
+        "name": "DHIS2 Job",
+        "description": "Check DHIS2 scheduled job status",
+        "is_network_stage": True,
+        "options": [
+            {
+                "name": "username",
+                "label": "Username",
+                "type": "string",
+                "default": "admin",
+                "description": "DHIS2 username",
+            },
+            {
+                "name": "password",
+                "label": "Password",
+                "type": "string",
+                "description": "DHIS2 password",
+            },
+            {
+                "name": "job_type",
+                "label": "Job Type",
+                "type": "string",
+                "description": "Specific job type to check (e.g., ANALYTICS_TABLE)",
+                "placeholder": "ANALYTICS_TABLE",
+            },
+        ],
+    },
+    "dhis2-analytics": {
+        "name": "DHIS2 Analytics",
+        "description": "Check DHIS2 analytics table generation status",
+        "is_network_stage": True,
+        "options": [
+            {
+                "name": "username",
+                "label": "Username",
+                "type": "string",
+                "default": "admin",
+                "description": "DHIS2 username",
+            },
+            {
+                "name": "password",
+                "label": "Password",
+                "type": "string",
+                "description": "DHIS2 password",
+            },
+            {
+                "name": "max_age_hours",
+                "label": "Max Age (hours)",
+                "type": "number",
+                "default": 24,
+                "description": "Maximum hours since last analytics run",
             },
         ],
     },

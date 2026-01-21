@@ -35,15 +35,13 @@
   - `storage.py` - MongoDB storage layer
   - `pipeline.py` - Shared pipeline execution utilities
   - `scheduler.py` - APScheduler background job scheduler
-  - `stages/` - Pluggable stage system
+  - `stages/` - Pluggable stage system (17 stages total)
     - `base.py` - Stage base class, CheckResult, Status enum, CheckContext
     - `registry.py` - Stage registration with @register_stage decorator
-    - `http.py` - HTTP stage with redirect following
-    - `dhis2.py` - DHIS2 instance check with auth
-    - `dhis2_checks.py` - DHIS2-specific stages (version, integrity, job, analytics)
-    - `ssl.py`, `dns.py`, `tcp.py` - Infrastructure stages
-    - `jq.py`, `jsonpath.py`, `regex.py` - Value extraction stages
-    - `threshold.py`, `contains.py`, `age.py` - Validation stages
+    - Network stages: `http.py`, `ssl.py`, `dns.py`, `tcp.py`
+    - DHIS2 stages: `dhis2.py`, `dhis2_checks.py` (version, integrity, job, analytics)
+    - Extractors: `jq.py`, `jsonpath.py`, `regex.py`, `header.py`
+    - Validators: `threshold.py`, `contains.py`, `age.py`, `json_schema.py`
   - `web/` - FastAPI web UI
     - `app.py` - App factory with CORS, session middleware
     - `routes.py` - Web routes (login, health endpoint)

@@ -7,7 +7,7 @@ Service uptime monitoring with a modern React dashboard.
 - REST API for monitor management
 - Modern React + shadcn/ui dashboard with dark theme
 - MongoDB storage for monitors and results
-- Pluggable stage system with 15+ check types
+- Pluggable stage system with 17 check types
 - Value extractors and transformers (jq, regex, jsonpath)
 - Threshold assertions and content validation
 - SSL certificate monitoring

@@ -2,8 +2,12 @@
 
 from typing import Any
 
+import structlog
+
 from uptimer.schemas import Stage
 from uptimer.stages import CheckContext, get_stage
+
+logger = structlog.get_logger()
 
 
 def instantiate_stage(stage: Stage) -> Any:
@@ -50,8 +54,8 @@ def instantiate_stage(stage: Stage) -> Any:
     if stage.max_age is not None:
         kwargs["max_age"] = stage.max_age
 
-    # SSL options
-    if stage.warn_days:
+    # SSL options (only for ssl stage)
+    if stage.type == "ssl" and stage.warn_days:
         kwargs["warn_days"] = stage.warn_days
 
     # TCP options
@@ -73,7 +77,13 @@ def instantiate_stage(stage: Stage) -> Any:
     # Try to instantiate with kwargs, fall back to no-args
     try:
         return stage_class(**kwargs)
-    except TypeError:
+    except TypeError as e:
+        logger.warning(
+            "Stage instantiation with options failed, using defaults",
+            stage_type=stage.type,
+            error=str(e),
+            provided_options=list(kwargs.keys()),
+        )
         return stage_class()
 
 
