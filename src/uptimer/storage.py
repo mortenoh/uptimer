@@ -10,7 +10,16 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import ConnectionFailure
 
-from uptimer.schemas import CheckResultRecord, Monitor, MonitorCreate, MonitorUpdate
+from uptimer.schemas import (
+    CheckResultRecord,
+    Monitor,
+    MonitorCreate,
+    MonitorUpdate,
+    Webhook,
+    WebhookCreate,
+    WebhookDelivery,
+    WebhookUpdate,
+)
 from uptimer.validation import validate_interval, validate_stage, validate_url
 
 logger = structlog.get_logger()
@@ -39,6 +48,8 @@ class Storage:
         self._db: Database[dict[str, Any]] = self._client[mongodb_db]
         self._monitors: Collection[dict[str, Any]] = self._db["monitors"]
         self._results: Collection[dict[str, Any]] = self._db["results"]
+        self._webhooks: Collection[dict[str, Any]] = self._db["webhooks"]
+        self._webhook_deliveries: Collection[dict[str, Any]] = self._db["webhook_deliveries"]
         self._validate_connection()
         self._ensure_indexes()
 
@@ -57,6 +68,10 @@ class Storage:
         self._results.create_index([("monitor_id", ASCENDING)])
         self._results.create_index([("monitor_id", ASCENDING), ("checked_at", DESCENDING)])
         self._monitors.create_index([("tags", ASCENDING)])
+        self._webhooks.create_index([("monitor_ids", ASCENDING)])
+        self._webhooks.create_index([("tags", ASCENDING)])
+        self._webhook_deliveries.create_index([("webhook_id", ASCENDING)])
+        self._webhook_deliveries.create_index([("webhook_id", ASCENDING), ("attempted_at", DESCENDING)])
 
     # Monitor operations
 
@@ -279,6 +294,195 @@ class Storage:
 
         Returns:
             Dict suitable for CheckResultRecord model
+        """
+        result = dict(doc)
+        result["id"] = result.pop("_id")
+        return result
+
+    # Webhook operations
+
+    def list_webhooks(self) -> list[Webhook]:
+        """List all webhooks.
+
+        Returns:
+            List of webhooks
+        """
+        docs = self._webhooks.find()
+        return [Webhook(**self._doc_to_webhook(doc)) for doc in docs]
+
+    def get_webhook(self, webhook_id: str) -> Webhook | None:
+        """Get a webhook by ID."""
+        doc = self._webhooks.find_one({"_id": webhook_id})
+        if doc:
+            return Webhook(**self._doc_to_webhook(doc))
+        return None
+
+    def create_webhook(self, data: WebhookCreate) -> Webhook:
+        """Create a new webhook.
+
+        Args:
+            data: Webhook creation data
+
+        Returns:
+            Created webhook
+        """
+        now = datetime.now(timezone.utc)
+        webhook_id = str(uuid.uuid4())
+
+        doc = {
+            "_id": webhook_id,
+            "name": data.name,
+            "url": data.url,
+            "enabled": data.enabled,
+            "monitor_ids": data.monitor_ids,
+            "tags": data.tags,
+            "secret": data.secret,
+            "headers": data.headers,
+            "created_at": now,
+            "updated_at": now,
+            "last_triggered": None,
+            "last_status": None,
+        }
+
+        self._webhooks.insert_one(doc)
+        return Webhook(**self._doc_to_webhook(doc))
+
+    def update_webhook(self, webhook_id: str, data: WebhookUpdate) -> Webhook | None:
+        """Update a webhook.
+
+        Args:
+            webhook_id: ID of webhook to update
+            data: Fields to update
+
+        Returns:
+            Updated webhook or None if not found
+        """
+        doc = self._webhooks.find_one({"_id": webhook_id})
+        if not doc:
+            return None
+
+        update_data = data.model_dump(exclude_unset=True)
+        update_data["updated_at"] = datetime.now(timezone.utc)
+
+        self._webhooks.update_one({"_id": webhook_id}, {"$set": update_data})
+
+        updated_doc = self._webhooks.find_one({"_id": webhook_id})
+        if updated_doc:
+            return Webhook(**self._doc_to_webhook(updated_doc))
+        return None
+
+    def delete_webhook(self, webhook_id: str) -> bool:
+        """Delete a webhook.
+
+        Args:
+            webhook_id: ID of webhook to delete
+
+        Returns:
+            True if deleted, False if not found
+        """
+        result = self._webhooks.delete_one({"_id": webhook_id})
+
+        if result.deleted_count > 0:
+            # Also delete associated deliveries
+            self._webhook_deliveries.delete_many({"webhook_id": webhook_id})
+            return True
+
+        return False
+
+    def get_webhooks_for_monitor(self, monitor: Monitor) -> list[Webhook]:
+        """Get webhooks that should receive alerts for a monitor.
+
+        A webhook matches if:
+        - It's enabled AND
+        - (monitor_ids is empty OR monitor.id is in monitor_ids) AND
+        - (tags is empty OR any of monitor's tags match webhook tags)
+
+        Args:
+            monitor: The monitor to find webhooks for
+
+        Returns:
+            List of matching webhooks
+        """
+        webhooks: list[Webhook] = []
+        for doc in self._webhooks.find({"enabled": True}):
+            webhook = Webhook(**self._doc_to_webhook(doc))
+
+            # Check monitor_ids filter
+            if webhook.monitor_ids and monitor.id not in webhook.monitor_ids:
+                continue
+
+            # Check tags filter
+            if webhook.tags:
+                if not any(tag in monitor.tags for tag in webhook.tags):
+                    continue
+
+            webhooks.append(webhook)
+
+        return webhooks
+
+    def update_webhook_last_triggered(self, webhook_id: str, status: str, triggered_at: datetime) -> None:
+        """Update webhook's last triggered timestamp and status.
+
+        Args:
+            webhook_id: ID of webhook
+            status: Delivery status ("success" or "failed")
+            triggered_at: When the webhook was triggered
+        """
+        self._webhooks.update_one(
+            {"_id": webhook_id},
+            {
+                "$set": {
+                    "last_triggered": triggered_at,
+                    "last_status": status,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
+
+    def add_webhook_delivery(self, delivery: WebhookDelivery) -> None:
+        """Add a webhook delivery record.
+
+        Args:
+            delivery: Delivery record to add
+        """
+        doc = delivery.model_dump(mode="json")
+        doc["_id"] = doc.pop("id")
+        self._webhook_deliveries.insert_one(doc)
+
+    def get_webhook_deliveries(self, webhook_id: str, limit: int = 100) -> list[WebhookDelivery]:
+        """Get delivery history for a webhook.
+
+        Args:
+            webhook_id: ID of webhook
+            limit: Maximum deliveries to return
+
+        Returns:
+            List of deliveries, most recent first
+        """
+        docs = self._webhook_deliveries.find({"webhook_id": webhook_id}).sort("attempted_at", DESCENDING).limit(limit)
+        return [WebhookDelivery(**self._doc_to_delivery(doc)) for doc in docs]
+
+    def _doc_to_webhook(self, doc: dict[str, Any]) -> dict[str, Any]:
+        """Convert MongoDB document to webhook dict.
+
+        Args:
+            doc: MongoDB document
+
+        Returns:
+            Dict suitable for Webhook model
+        """
+        result = dict(doc)
+        result["id"] = result.pop("_id")
+        return result
+
+    def _doc_to_delivery(self, doc: dict[str, Any]) -> dict[str, Any]:
+        """Convert MongoDB document to delivery dict.
+
+        Args:
+            doc: MongoDB document
+
+        Returns:
+            Dict suitable for WebhookDelivery model
         """
         result = dict(doc)
         result["id"] = result.pop("_id")

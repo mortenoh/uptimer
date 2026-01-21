@@ -130,3 +130,77 @@ class CheckResultRecord(BaseModel):
     elapsed_ms: float
     details: dict[str, Any] = Field(default_factory=dict)
     checked_at: datetime
+
+
+# Webhook models
+
+
+class WebhookCreate(BaseModel):
+    """Model for creating a new webhook."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="Display name")
+    url: str = Field(..., max_length=2048, description="Webhook URL to POST to")
+    enabled: bool = Field(default=True, description="Whether webhook is active")
+    monitor_ids: list[str] = Field(default_factory=list, description="Filter by specific monitor IDs")
+    tags: list[str] = Field(default_factory=list, description="Filter by monitor tags")
+    secret: str | None = Field(default=None, description="Secret for HMAC signature")
+    headers: dict[str, str] = Field(default_factory=dict, description="Custom HTTP headers")
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_empty(cls, v: str) -> str:
+        """Validate name is not empty or whitespace only."""
+        if not v.strip():
+            raise ValueError("Name cannot be empty or whitespace only")
+        return v.strip()
+
+
+class WebhookUpdate(BaseModel):
+    """Model for updating a webhook. All fields optional."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    url: str | None = Field(default=None, max_length=2048)
+    enabled: bool | None = None
+    monitor_ids: list[str] | None = None
+    tags: list[str] | None = None
+    secret: str | None = None
+    headers: dict[str, str] | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_empty(cls, v: str | None) -> str | None:
+        """Validate name is not empty or whitespace only."""
+        if v is not None and not v.strip():
+            raise ValueError("Name cannot be empty or whitespace only")
+        return v.strip() if v else v
+
+
+class Webhook(BaseModel):
+    """Full webhook model with all fields."""
+
+    id: str
+    name: str
+    url: str
+    enabled: bool = True
+    monitor_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    secret: str | None = None
+    headers: dict[str, str] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+    last_triggered: datetime | None = None
+    last_status: str | None = None
+
+
+class WebhookDelivery(BaseModel):
+    """Record of a webhook delivery attempt."""
+
+    id: str
+    webhook_id: str
+    monitor_id: str
+    previous_status: str
+    new_status: str
+    success: bool
+    status_code: int | None = None
+    error: str | None = None
+    attempted_at: datetime

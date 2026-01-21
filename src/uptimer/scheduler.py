@@ -30,6 +30,7 @@ def run_monitor_check(monitor_id: str) -> None:
         monitor_id: ID of the monitor to check
     """
     # Import here to avoid circular import
+    from uptimer.alerting import process_alerts
     from uptimer.web.api.deps import get_storage
 
     storage = get_storage()
@@ -41,6 +42,9 @@ def run_monitor_check(monitor_id: str) -> None:
     if not monitor.enabled:
         logger.debug("Skipping disabled monitor", monitor_id=monitor_id, name=monitor.name)
         return
+
+    # Capture previous status before check
+    previous_status = monitor.last_status
 
     logger.info("Running scheduled check", monitor_id=monitor_id, name=monitor.name)
 
@@ -68,6 +72,16 @@ def run_monitor_check(monitor_id: str) -> None:
             status=final_status,
             elapsed_ms=round(total_elapsed_ms, 1),
         )
+
+        # Process alerts for status changes (non-blocking)
+        try:
+            process_alerts(storage, monitor, record, previous_status, final_status)
+        except Exception as alert_error:
+            logger.error(
+                "Alert processing failed",
+                monitor_id=monitor_id,
+                error=str(alert_error),
+            )
     except Exception as e:
         logger.error("Scheduled check failed", monitor_id=monitor_id, name=monitor.name, error=str(e))
 
