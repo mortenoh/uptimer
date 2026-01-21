@@ -3,7 +3,7 @@
 
 services:
   mongo:
-    image: mongo:latest
+    image: mongo:8
     container_name: uptimer-mongo
     ports:
       - "27017:27017"
