@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-all run-local stop logs seed clean docs docs-serve docs-build frontend frontend-build frontend-install docker-build
+.PHONY: help install lint test test-integration test-all test-performance coverage serve run run-all run-local dev stop logs seed clean docs docs-serve docs-build frontend frontend-build frontend-install docker-build rebuild
 
 # ==============================================================================
 # Variables
@@ -26,17 +26,18 @@ help:
 	@echo "  coverage         Run tests with coverage reporting"
 	@echo ""
 	@echo "Running:"
-	@echo "  run              Start API + MongoDB with docker compose"
-	@echo "  run-all          Start everything (API + MongoDB + Frontend)"
-	@echo "  run-local        Start API server locally (requires local MongoDB)"
+	@echo "  run              Docker: MongoDB + API only (no frontend)"
+	@echo "  run-all          Docker: Full stack with seeding"
+	@echo "  dev              Local: Start MongoDB in Docker, print instructions"
 	@echo "  serve            Start API dev server with reload"
 	@echo "  frontend         Start frontend dev server"
-	@echo "  stop             Stop docker compose services"
+	@echo "  stop             Stop all Docker services"
 	@echo "  logs             Follow docker compose logs"
 	@echo "  seed             Seed MongoDB with sample monitors"
 	@echo ""
 	@echo "Building:"
 	@echo "  docker-build     Build all Docker images"
+	@echo "  rebuild          Force rebuild Docker images (no cache)"
 	@echo "  frontend-build   Build frontend for production"
 	@echo "  frontend-install Install frontend dependencies"
 	@echo ""
@@ -90,49 +91,50 @@ coverage:
 # ==============================================================================
 
 run:
-	@echo ">>> Rebuilding and starting MongoDB + API"
-	@docker compose down -v
-	@docker compose build --no-cache
-	@docker compose up -d --remove-orphans mongo api
-	@echo ">>> Waiting for services..."
-	@sleep 3
-	@$(MAKE) seed
+	@echo ">>> Starting MongoDB + API"
+	@docker compose down
+	@docker compose build api
+	@docker compose up -d mongo api
+	@echo ">>> Waiting for API to be healthy..."
+	@docker compose --profile seed up seed
 	@echo ">>> API: http://localhost:8000"
 	@docker compose logs -f mongo api
 
 run-all:
-	@echo ">>> Rebuilding and starting all services"
-	@docker compose down -v
-	@rm -rf clients/web/node_modules clients/web/.next
-	@docker compose build --no-cache
-	@docker compose up -d --remove-orphans
-	@echo ">>> Waiting for services..."
-	@sleep 3
-	@$(MAKE) seed
+	@echo ">>> Starting all services"
+	@docker compose down
+	@docker compose build
+	@docker compose up -d
+	@echo ">>> Waiting for API to be healthy..."
+	@docker compose --profile seed up seed
 	@echo ">>> API: http://localhost:8000 | Frontend: http://localhost:3000"
 	@docker compose logs -f
 
-run-local:
-	@echo ">>> Starting API server locally (requires MongoDB at localhost:27017)"
-	@$(UV) run uptimer serve
+dev:
+	@echo ">>> Starting MongoDB in Docker, API and frontend locally"
+	@docker compose up -d mongo
+	@echo ">>> Waiting for MongoDB..."
+	@sleep 2
+	@$(MAKE) seed
+	@echo ""
+	@echo ">>> MongoDB running at localhost:27017"
+	@echo ">>> Start API: make serve"
+	@echo ">>> Start frontend: make frontend"
 
 serve:
 	@$(UV) run uptimer serve --reload
 
 frontend:
-	@echo ">>> Cleaning and starting frontend dev server on http://localhost:3001"
-	@rm -rf clients/web/node_modules clients/web/.next
+	@echo ">>> Starting frontend dev server on http://localhost:3001"
 	@cd clients/web && npm install
 	@cd clients/web && npm run dev -- -p 3001
 
 frontend-install:
-	@echo ">>> Clean installing frontend dependencies"
-	@rm -rf clients/web/node_modules clients/web/.next
+	@echo ">>> Installing frontend dependencies"
 	@cd clients/web && npm install
 
 frontend-build:
-	@echo ">>> Clean building frontend for production"
-	@rm -rf clients/web/node_modules clients/web/.next
+	@echo ">>> Building frontend for production"
 	@cd clients/web && npm install
 	@cd clients/web && npm run build
 
@@ -154,6 +156,10 @@ seed:
 docker-build:
 	@echo ">>> Building Docker images"
 	@docker compose build
+
+rebuild:
+	@echo ">>> Force rebuilding Docker images (no cache)"
+	@docker compose build --no-cache
 
 # ==============================================================================
 # Documentation

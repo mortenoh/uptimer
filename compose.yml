@@ -25,6 +25,12 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
     build:
@@ -37,6 +43,19 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - api
+
+  seed:
+    build: .
+    container_name: uptimer-seed
+    command: ["python", "scripts/seed_data.py"]
+    environment:
+      - UPTIMER_MONGODB_URI=mongodb://mongo:27017
+      - UPTIMER_MONGODB_DB=uptimer
+    depends_on:
+      api:
+        condition: service_healthy
+    profiles:
+      - seed
 
 volumes:
   mongo_data:

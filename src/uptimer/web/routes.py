@@ -28,6 +28,12 @@ async def index() -> JSONResponse:
     )
 
 
+@router.get("/health", response_model=None)
+async def health() -> JSONResponse:
+    """Health check endpoint for container orchestration."""
+    return JSONResponse({"status": "healthy"})
+
+
 @router.post("/login")
 async def login(
     request: Request,
