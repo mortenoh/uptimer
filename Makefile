@@ -101,7 +101,7 @@ run:
 	@docker compose --profile seed up seed
 	@echo ">>> API: http://localhost:8000"
 	@echo ">>> Press Ctrl-C to stop and clean up"
-	@trap 'echo ""; echo ">>> Stopping services..."; docker compose down -v' INT; docker compose logs -f mongo api
+	@trap 'echo ""; echo ">>> Stopping services..."; docker compose down -v; exit 0' INT; docker compose logs -f mongo api
 
 run-all:
 	@echo ">>> Starting all services"
@@ -113,7 +113,7 @@ run-all:
 	@docker compose --profile seed up seed
 	@echo ">>> API: http://localhost:8000 | Frontend: http://localhost:3000"
 	@echo ">>> Press Ctrl-C to stop and clean up"
-	@trap 'echo ""; echo ">>> Stopping services..."; docker compose down -v' INT; docker compose logs -f
+	@trap 'echo ""; echo ">>> Stopping services..."; docker compose down -v; exit 0' INT; docker compose logs -f
 
 run-ghcr:
 	@echo ">>> Starting all services using pre-built ghcr.io images"
