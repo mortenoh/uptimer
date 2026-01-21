@@ -66,8 +66,8 @@ class Storage:
         Returns:
             Sorted list of unique tags
         """
-        tags: list[str] = self._monitors.distinct("tags")
-        return sorted(tags)
+        tags: list[str | None] = self._monitors.distinct("tags")
+        return sorted(t for t in tags if t is not None)
 
     def get_monitor(self, monitor_id: str) -> Monitor | None:
         """Get a monitor by ID."""

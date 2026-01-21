@@ -94,7 +94,8 @@ coverage:
 run:
 	@echo ">>> Starting MongoDB + API"
 	@docker compose down
-	@docker compose build api
+	@docker rm uptimer-seed 2>/dev/null || true
+	@docker compose --profile seed build api seed
 	@docker compose up -d mongo api
 	@echo ">>> Waiting for API to be healthy..."
 	@docker compose --profile seed up seed
@@ -104,7 +105,8 @@ run:
 run-all:
 	@echo ">>> Starting all services"
 	@docker compose down
-	@docker compose build
+	@docker rm uptimer-seed 2>/dev/null || true
+	@docker compose --profile seed build
 	@docker compose up -d
 	@echo ">>> Waiting for API to be healthy..."
 	@docker compose --profile seed up seed

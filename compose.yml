@@ -47,6 +47,7 @@ services:
   seed:
     build: .
     container_name: uptimer-seed
+    entrypoint: []
     command: ["python", "scripts/seed_data.py"]
     environment:
       - UPTIMER_MONGODB_URI=mongodb://mongo:27017

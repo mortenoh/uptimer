@@ -96,13 +96,16 @@ def _run_pipeline(url: str, pipeline: list[Stage]) -> tuple[str, str, float, dic
     return final_status, "; ".join(messages), total_elapsed_ms, all_details
 
 
-def run_monitor_check(monitor_id: str, storage: Storage) -> None:
+def run_monitor_check(monitor_id: str) -> None:
     """Run a check for a specific monitor.
 
     Args:
         monitor_id: ID of the monitor to check
-        storage: Storage instance
     """
+    # Import here to avoid circular import
+    from uptimer.web.api.deps import get_storage
+
+    storage = get_storage()
     monitor = storage.get_monitor(monitor_id)
     if not monitor:
         logger.warning("Monitor not found for scheduled check", monitor_id=monitor_id)
@@ -167,7 +170,7 @@ def _add_monitor_job(scheduler: BackgroundScheduler, monitor: Monitor, storage: 
             scheduler.add_job(
                 run_monitor_check,
                 trigger=trigger,
-                args=[monitor.id, storage],
+                args=[monitor.id],
                 id=job_id,
                 name=f"Check: {monitor.name}",
                 replace_existing=True,
@@ -181,7 +184,7 @@ def _add_monitor_job(scheduler: BackgroundScheduler, monitor: Monitor, storage: 
         scheduler.add_job(
             run_monitor_check,
             trigger=trigger,
-            args=[monitor.id, storage],
+            args=[monitor.id],
             id=job_id,
             name=f"Check: {monitor.name}",
             replace_existing=True,
